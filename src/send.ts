@@ -323,7 +323,7 @@ export function buildInteractiveCard(params: {
 /**
  * Create a simple text card for streaming updates with proper streaming configuration.
  * Uses Feishu's streaming_config to control update frequency and avoid rate limits.
- * 
+ *
  * @see https://open.feishu.cn/document/cardkit-v1/streaming-updates-openapi-overview
  */
 export function createSimpleTextCard(content: string, streaming = false): Record<string, unknown> {
@@ -338,6 +338,7 @@ export function createSimpleTextCard(content: string, streaming = false): Record
         {
           tag: "markdown",
           content: normalizeMarkdownForFeishu(content || "..."), // Fallback for empty initially
+          element_id: "markdown_content", // Required for streaming updates - unique identifier for the element
         }
       ],
     },
@@ -351,11 +352,20 @@ export function createSimpleTextCard(content: string, streaming = false): Record
       content: "[生成中]",
     };
     (card.config as Record<string, unknown>).streaming_config = {
-      // Update frequency in milliseconds
-      // Default 30ms, but we use 50ms for better rate limit safety
-      print_frequency_ms: 50,
-      // Number of characters to display per update
-      print_step: 2,
+      // Update frequency in milliseconds (object format with platform-specific values)
+      print_frequency_ms: {
+        default: 30,
+        android: 25,
+        ios: 40,
+        pc: 50,
+      },
+      // Number of characters to display per update (object format with platform-specific values)
+      print_step: {
+        default: 2,
+        android: 3,
+        ios: 4,
+        pc: 5,
+      },
       // Update strategy: "fast" for immediate display, "delay" for buffered display
       print_strategy: "fast",
     };
