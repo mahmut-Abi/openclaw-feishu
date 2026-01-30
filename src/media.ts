@@ -205,31 +205,68 @@ export async function uploadImageFeishu(params: {
 
   const client = createFeishuClient(feishuCfg);
 
-  // SDK expects a Readable stream, not a Buffer
-  // Use type assertion since SDK actually accepts any Readable at runtime
-  const imageStream =
-    typeof image === "string" ? fs.createReadStream(image) : Readable.from(image);
+  let fileInput: string | Buffer;
+  let fileName: string;
 
-  const response = await client.im.image.create({
-    data: {
-      image_type: imageType,
-      image: imageStream as any,
-    },
-  });
-
-  // SDK v1.30+ returns data directly without code wrapper on success
-  // On error, it throws or returns { code, msg }
-  const responseAny = response as any;
-  if (responseAny.code !== undefined && responseAny.code !== 0) {
-    throw new Error(`Feishu image upload failed: ${responseAny.msg || `code ${responseAny.code}`}`);
+  if (typeof image === "string") {
+    fileInput = image;
+    fileName = path.basename(image);
+  } else {
+    // For Buffer, create a temporary file and use it
+    // This ensures the SDK gets a proper file stream
+    const tempDir = os.tmpdir();
+    fileName = `upload_${Date.now()}_${Math.random().toString(36).substring(7)}.bin`;
+    const tempFilePath = path.join(tempDir, fileName);
+    fs.writeFileSync(tempFilePath, image);
+    fileInput = tempFilePath;
   }
 
-  const imageKey = responseAny.image_key ?? responseAny.data?.image_key;
-  if (!imageKey) {
-    throw new Error("Feishu image upload failed: no image_key returned");
-  }
+  const logFn = (feishuCfg as any).runtime?.log ?? console.log;
+  const fileSize = typeof fileInput === "string" ? (fs.existsSync(fileInput) ? fs.statSync(fileInput).size : 0) : (fileInput as Buffer).length;
+  logFn?.(`[feishu] uploading image: fileName=${fileName}, imageType=${imageType}, fileSize=${fileSize}`);
 
-  return { imageKey };
+  try {
+    const response = await client.im.image.create({
+      data: {
+        image_type: imageType,
+        image: fileInput as any,
+      },
+    });
+
+    // SDK v1.30+ returns data directly without code wrapper on success
+    // On error, it throws or returns { code, msg }
+    const responseAny = response as any;
+    if (responseAny.code !== undefined && responseAny.code !== 0) {
+      throw new Error(`Feishu image upload failed: ${responseAny.msg || `code ${responseAny.code}`}`);
+    }
+
+    const imageKey = responseAny.image_key ?? responseAny.data?.image_key;
+    if (!imageKey) {
+      throw new Error("Feishu image upload failed: no image_key returned");
+    }
+
+    // Clean up temp file if it was created
+    if (typeof image !== "string" && typeof fileInput === "string") {
+      try {
+        fs.unlinkSync(fileInput);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
+
+    return { imageKey };
+  } catch (error) {
+    logFn?.(`[feishu] image upload error: ${String(error)}`);
+    // Clean up temp file on error
+    if (typeof image !== "string" && typeof fileInput === "string") {
+      try {
+        fs.unlinkSync(fileInput);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
+    throw error;
+  }
 }
 
 /**
@@ -251,22 +288,33 @@ export async function uploadFileFeishu(params: {
 
   const client = createFeishuClient(feishuCfg);
 
-  // SDK expects a Readable stream, not a Buffer
-  // Use type assertion since SDK actually accepts any Readable at runtime
-  const fileStream =
-    typeof file === "string" ? fs.createReadStream(file) : Readable.from(file);
+  let fileInput: string | Buffer;
+  let actualFileName: string;
+
+  if (typeof file === "string") {
+    fileInput = file;
+    actualFileName = fileName;
+  } else {
+    // For Buffer, create a temporary file and use it
+    // This ensures the SDK gets a proper file stream
+    const tempDir = os.tmpdir();
+    actualFileName = fileName;
+    const tempFilePath = path.join(tempDir, `upload_${Date.now()}_${Math.random().toString(36).substring(7)}.${actualFileName.split('.').pop() || 'bin'}`);
+    fs.writeFileSync(tempFilePath, file);
+    fileInput = tempFilePath;
+  }
 
   // Log upload details for debugging
-  const fileSize = typeof file === "string" ? (fs.existsSync(file) ? fs.statSync(file).size : 0) : file.length;
+  const fileSize = typeof fileInput === "string" ? (fs.existsSync(fileInput) ? fs.statSync(fileInput).size : 0) : (fileInput as Buffer).length;
   const logFn = (feishuCfg as any).runtime?.log ?? console.log;
-  logFn?.(`[feishu] uploading file: fileName=${fileName}, fileType=${fileType}, fileSize=${fileSize}${duration !== undefined ? `, duration=${duration}` : ''}`);
+  logFn?.(`[feishu] uploading file: fileName=${actualFileName}, fileType=${fileType}, fileSize=${fileSize}${duration !== undefined ? `, duration=${duration}` : ''}`);
 
   try {
     const response = await client.im.file.create({
       data: {
         file_type: fileType,
-        file_name: fileName,
-        file: fileStream as any,
+        file_name: actualFileName,
+        file: fileInput as any,
         ...(duration !== undefined && { duration }),
       },
     });
@@ -282,9 +330,26 @@ export async function uploadFileFeishu(params: {
       throw new Error("Feishu file upload failed: no file_key returned");
     }
 
+    // Clean up temp file if it was created
+    if (typeof file !== "string" && typeof fileInput === "string") {
+      try {
+        fs.unlinkSync(fileInput);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
+
     return { fileKey };
   } catch (error) {
     logFn?.(`[feishu] file upload error: ${String(error)}`);
+    // Clean up temp file on error
+    if (typeof file !== "string" && typeof fileInput === "string") {
+      try {
+        fs.unlinkSync(fileInput);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
     throw error;
   }
 }
