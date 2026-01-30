@@ -41,9 +41,9 @@ class FeishuStream {
       // If we are already creating the message, wait for it
       if (this.initializationPromise) {
         await this.initializationPromise;
-        // After waiting, if we have a messageId, proceed to normal update flow
+        // After waiting, if we have a messageId, proceed to update with the current content
         if (this.messageId) {
-          // Fall through to update logic below
+          // Fall through to update logic below with the current content
         } else {
           // Initialization failed or something weird happened
           return;
@@ -74,7 +74,7 @@ class FeishuStream {
         })();
 
         await this.initializationPromise;
-        return;
+        // Don't return - fall through to update logic to ensure the current content is displayed
       }
     }
 
