@@ -138,6 +138,9 @@ channels:
     # Render mode for bot replies
     renderMode: "auto"  # "auto" | "raw" | "card"
 
+    # Enable streaming updates for partial replies
+    streaming: true  # true or false (default: true)
+
     # Markdown settings
     markdown:
       mode: "native"  # "native" | "escape" | "strip"
@@ -203,6 +206,7 @@ channels:
 | `requireMention` | boolean | `true` | Require @mention in groups |
 | `mediaMaxMb` | number | `30` | Max media file size in MB |
 | `renderMode` | enum | `"auto"` | `"auto"` | `"raw"` | `"card"` |
+| `streaming` | boolean | `true` | Enable streaming updates for partial replies |
 | `historyLimit` | number | - | Max messages to fetch for group chats |
 | `dmHistoryLimit` | number | - | Max messages to fetch for DMs |
 | `textChunkLimit` | number | - | Max characters per message chunk |
@@ -233,6 +237,44 @@ channels:
 | `auto` | (Default) Automatically detect: use card for messages with code blocks or tables, plain text otherwise. |
 | `raw` | Always send replies as plain text. Markdown tables are converted to ASCII. |
 | `card` | Always send replies as interactive cards with full markdown rendering (syntax highlighting, tables, clickable links). |
+
+#### Markdown Support
+
+Feishu cards support a comprehensive set of Markdown syntax. The plugin automatically normalizes markdown content to ensure compatibility with Feishu's renderer.
+
+**Supported Markdown Elements:**
+
+| Element | Syntax | Example |
+|---------|--------|---------|
+| Headers | `#`, `##`, `###` | `# Heading 1` |
+| Bold | `**text**` | `**bold text**` |
+| Italic | `*text*` | `*italic text*` |
+| Strikethrough | `~~text~~` | `~~strikethrough~~` |
+| Inline Code | `` `code` `` | `` `inline code` `` |
+| Code Blocks | ```language ... ``` | ```javascript ... ``` |
+| Unordered Lists | `- item` | `- Item 1` |
+| Ordered Lists | `1. item` | `1. First item` |
+| Links | `[text](url)` | `[OpenClaw](https://github.com/openclaw/openclaw)` |
+| Images | `![alt](url)` | `![logo](https://example.com/logo.png)` |
+| Blockquotes | `> text` | `> This is a quote` |
+| Horizontal Rules | `---` | `---` |
+| Tables | `| col1 | col2 |` | `| Name | Age |` |
+
+**Code Block Languages:**
+
+Feishu supports syntax highlighting for 70+ programming languages including:
+- JavaScript/TypeScript
+- Python
+- Java
+- Go
+- Rust
+- C/C++
+- Shell/Bash
+- And many more...
+
+**Automatic Detection:**
+
+When `renderMode` is set to `"auto"`, the plugin automatically detects if your message contains markdown elements and uses card rendering. This ensures the best visual presentation while keeping simple messages as plain text.
 
 ### Features
 
@@ -420,6 +462,9 @@ channels:
     # 回复渲染模式
     renderMode: "auto"  # "auto" | "raw" | "card"
 
+    # 启用流式更新
+    streaming: true  # true 或 false（默认：true）
+
     # Markdown 设置
     markdown:
       mode: "native"  # "native" | "escape" | "strip"
@@ -485,6 +530,7 @@ channels:
 | `requireMention` | boolean | `true` | 群聊是否需要 @机器人 |
 | `mediaMaxMb` | number | `30` | 媒体文件最大大小（MB） |
 | `renderMode` | enum | `"auto"` | `"auto"` | `"raw"` | `"card"` |
+| `streaming` | boolean | `true` | 启用部分回复的流式更新 |
 | `historyLimit` | number | - | 群聊获取的最大消息数 |
 | `dmHistoryLimit` | number | - | 私聊获取的最大消息数 |
 | `textChunkLimit` | number | - | 每条消息块的最大字符数 |
@@ -515,6 +561,44 @@ channels:
 | `auto` | （默认）自动检测：有代码块或表格时用卡片，否则纯文本 |
 | `raw` | 始终纯文本，表格转为 ASCII |
 | `card` | 始终使用卡片，支持语法高亮、表格、链接等 |
+
+#### Markdown 支持
+
+飞书卡片支持完整的 Markdown 语法。插件会自动规范化 Markdown 内容以确保与飞书渲染器兼容。
+
+**支持的 Markdown 元素：**
+
+| 元素 | 语法 | 示例 |
+|------|------|------|
+| 标题 | `#`, `##`, `###` | `# 一级标题` |
+| 粗体 | `**文本**` | `**粗体文本**` |
+| 斜体 | `*文本*` | `*斜体文本*` |
+| 删除线 | `~~文本~~` | `~~删除线~~` |
+| 行内代码 | `` `代码` `` | `` `行内代码` `` |
+| 代码块 | ```语言 ... ``` | ```javascript ... ``` |
+| 无序列表 | `- 项目` | `- 项目 1` |
+| 有序列表 | `1. 项目` | `1. 第一个项目` |
+| 链接 | `[文本](url)` | `[OpenClaw](https://github.com/openclaw/openclaw)` |
+| 图片 | `![alt](url)` | `![logo](https://example.com/logo.png)` |
+| 引用块 | `> 文本` | `> 这是一段引用` |
+| 分割线 | `---` | `---` |
+| 表格 | `| 列1 | 列2 |` | `| 姓名 | 年龄 |` |
+
+**代码块语言支持：**
+
+飞书支持 70+ 种编程语言的语法高亮，包括：
+- JavaScript/TypeScript
+- Python
+- Java
+- Go
+- Rust
+- C/C++
+- Shell/Bash
+- 以及更多...
+
+**自动检测：**
+
+当 `renderMode` 设置为 `"auto"` 时，插件会自动检测消息是否包含 Markdown 元素，并使用卡片渲染。这确保了最佳视觉效果，同时保持简单消息为纯文本格式。
 
 ### 功能
 

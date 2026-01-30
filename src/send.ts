@@ -3,6 +3,7 @@ import type { FeishuConfig, FeishuSendResult } from "./types.js";
 import { createFeishuClient } from "./client.js";
 import { resolveReceiveIdType, normalizeFeishuTarget } from "./targets.js";
 import { getFeishuRuntime } from "./runtime.js";
+import { normalizeMarkdownForFeishu, convertTablesToAscii, shouldUseCard } from "./markdown.js";
 
 export type FeishuMessageInfo = {
   messageId: string;
@@ -241,6 +242,7 @@ export async function updateCardFeishu(params: {
 /**
  * Build a Feishu interactive card with markdown content.
  * Cards render markdown properly (code blocks, tables, links, etc.)
+ * This function normalizes the markdown to ensure compatibility with Feishu.
  */
 export function buildMarkdownCard(text: string): Record<string, unknown> {
   return {
@@ -250,7 +252,7 @@ export function buildMarkdownCard(text: string): Record<string, unknown> {
     elements: [
       {
         tag: "markdown",
-        content: text,
+        content: normalizeMarkdownForFeishu(text),
       },
     ],
   };
@@ -289,7 +291,7 @@ export function buildInteractiveCard(params: {
   const elements: Array<Record<string, unknown>> = [
     {
       tag: "markdown",
-      content: params.content,
+      content: normalizeMarkdownForFeishu(params.content),
     },
   ];
 
@@ -335,7 +337,7 @@ export function createSimpleTextCard(content: string, streaming = false): Record
       elements: [
         {
           tag: "markdown",
-          content: content || "...", // Fallback for empty initially
+          content: normalizeMarkdownForFeishu(content || "..."), // Fallback for empty initially
         }
       ],
     },

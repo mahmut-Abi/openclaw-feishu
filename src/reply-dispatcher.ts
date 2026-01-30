@@ -14,18 +14,7 @@ import {
   removeTypingIndicator,
   type TypingIndicatorState,
 } from "./typing.js";
-
-/**
- * Detect if text contains markdown elements that benefit from card rendering.
- * Used by auto render mode.
- */
-function shouldUseCard(text: string): boolean {
-  // Code blocks (fenced)
-  if (/```[\s\S]*?```/.test(text)) return true;
-  // Tables (at least header + separator row with |)
-  if (/\|.+\|[\r\n]+\|[-:| ]+\|/.test(text)) return true;
-  return false;
-}
+import { shouldUseCard } from "./markdown.js";
 
 class FeishuStream {
   private messageId: string | null = null;
@@ -272,6 +261,15 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
       onPartialReply: async (payload: ReplyPayload) => {
         const text = payload.text ?? "";
         if (!text) return;
+
+        // Check if streaming is enabled in config
+        const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+        const streamingEnabled = feishuCfg?.streaming ?? true;
+
+        if (!streamingEnabled) {
+          // Streaming disabled, ignore partial replies
+          return;
+        }
 
         if (!currentStream) {
           currentStream = new FeishuStream({
