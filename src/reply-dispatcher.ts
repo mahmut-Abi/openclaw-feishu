@@ -388,6 +388,9 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
         const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
         const streamingEnabled = feishuCfg?.streaming ?? true;
 
+        // Debug: log streaming config
+        params.runtime.log?.(`feishu: onPartialReply called, streamingEnabled=${streamingEnabled}, feishuCfg=${JSON.stringify({ streaming: feishuCfg?.streaming, renderMode: feishuCfg?.renderMode })}`);
+
         if (!streamingEnabled) {
           // Streaming disabled, ignore partial replies
           return;
