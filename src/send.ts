@@ -272,42 +272,6 @@ export async function sendMarkdownCardFeishu(params: {
 }
 
 /**
- * Edit an existing text message.
- * Note: Feishu only allows editing messages within 24 hours.
- */
-export async function editMessageFeishu(params: {
-  cfg: ClawdbotConfig;
-  messageId: string;
-  text: string;
-}): Promise<void> {
-  const { cfg, messageId, text } = params;
-  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
-  if (!feishuCfg) {
-    throw new Error("Feishu channel not configured");
-  }
-
-  const client = createFeishuClient(feishuCfg);
-  const tableMode = getFeishuRuntime().channel.text.resolveMarkdownTableMode({
-    cfg,
-    channel: "feishu",
-  });
-  const messageText = getFeishuRuntime().channel.text.convertMarkdownTables(text ?? "", tableMode);
-  const content = JSON.stringify({ text: messageText });
-
-  const response = await client.im.message.update({
-    path: { message_id: messageId },
-    data: {
-      msg_type: "text",
-      content,
-    },
-  });
-
-  if (response.code !== 0) {
-    throw new Error(`Feishu message edit failed: ${response.msg || `code ${response.code}`}`);
-  }
-}
-
-/**
  * Build a Feishu interactive card with title, content and buttons.
  * Supports markdown content and interactive buttons with actions.
  */
@@ -352,4 +316,62 @@ export function buildInteractiveCard(params: {
     },
     elements,
   };
+}
+
+/**
+ * Create a simple text card for streaming updates.
+ * Uses streaming_mode to indicate if the content is still being generated.
+ */
+export function createSimpleTextCard(content: string, streaming = false): Record<string, unknown> {
+  return {
+    schema: "2.0",
+    config: {
+      streaming_mode: streaming,
+    },
+    body: {
+      direction: "horizontal",
+      elements: [
+        {
+          tag: "markdown",
+          content: content || "...", // Fallback for empty initially
+        }
+      ],
+    },
+  };
+}
+
+/**
+ * Edit an existing text message.
+ * Note: Feishu only allows editing messages within 24 hours.
+ */
+export async function editMessageFeishu(params: {
+  cfg: ClawdbotConfig;
+  messageId: string;
+  text: string;
+}): Promise<void> {
+  const { cfg, messageId, text } = params;
+  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  if (!feishuCfg) {
+    throw new Error("Feishu channel not configured");
+  }
+
+  const client = createFeishuClient(feishuCfg);
+  const tableMode = getFeishuRuntime().channel.text.resolveMarkdownTableMode({
+    cfg,
+    channel: "feishu",
+  });
+  const messageText = getFeishuRuntime().channel.text.convertMarkdownTables(text ?? "", tableMode);
+  const content = JSON.stringify({ text: messageText });
+
+  const response = await client.im.message.update({
+    path: { message_id: messageId },
+    data: {
+      msg_type: "text",
+      content,
+    },
+  });
+
+  if (response.code !== 0) {
+    throw new Error(`Feishu message edit failed: ${response.msg || `code ${response.code}`}`);
+  }
 }
