@@ -27,15 +27,10 @@ function shouldUseCard(text: string): boolean {
   return false;
 }
 
-// Feishu rate limits are strict (5 QPS), so we throttle updates.
-// We target ~2-3 updates per second to be safe and smooth.
-const STREAM_UPDATE_INTERVAL_MS = 400;
-
 class FeishuStream {
   private messageId: string | null = null;
   private lastContent = "";
   private lastUpdateTime = 0;
-  private pendingUpdate: NodeJS.Timeout | null = null;
   private isFinalized = false;
   private initializationPromise: Promise<void> | null = null;
 
@@ -70,7 +65,9 @@ class FeishuStream {
 
         this.initializationPromise = (async () => {
           try {
-            // Use Card with streaming_mode: true
+            // Use Card with streaming_mode: true and streaming_config
+            // The streaming_config tells Feishu how to display updates on the client
+            // and controls the update frequency to avoid rate limits
             const card = createSimpleTextCard(content, true /* streaming */);
 
             const result = await sendCardFeishu({
@@ -95,18 +92,10 @@ class FeishuStream {
       }
     }
 
-    // Schedule or execute update
-    const now = Date.now();
-    const timeSinceLast = now - this.lastUpdateTime;
-
-    if (isFinal || timeSinceLast >= STREAM_UPDATE_INTERVAL_MS) {
-      await this.performUpdate(content);
-    } else if (!this.pendingUpdate) {
-      this.pendingUpdate = setTimeout(() => {
-        this.pendingUpdate = null;
-        this.performUpdate(content).catch(() => { });
-      }, STREAM_UPDATE_INTERVAL_MS - timeSinceLast);
-    }
+    // Perform the update
+    // Feishu's streaming_config will handle the actual rate limiting on the client side
+    // We just need to send updates as we receive new content
+    await this.performUpdate(content);
   }
 
   private async performUpdate(content: string) {
@@ -123,17 +112,16 @@ class FeishuStream {
       this.lastContent = content;
       this.lastUpdateTime = Date.now();
     } catch (err) {
-      this.ctx.runtime.log?.(`feishu stream update failed: ${String(err)}`);
+      // Don't spam logs on rate limit errors (code 230020)
+      const errStr = String(err);
+      if (!errStr.includes('230020')) {
+        this.ctx.runtime.log?.(`feishu stream update failed: ${errStr}`);
+      }
     }
   }
 
   async finalize(content: string) {
     if (this.isFinalized) return;
-
-    if (this.pendingUpdate) {
-      clearTimeout(this.pendingUpdate);
-      this.pendingUpdate = null;
-    }
 
     // Use streaming_mode: false to signal completion
     if (this.messageId) {
@@ -299,8 +287,8 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
           }
         }
 
-        // const converted = core.channel.text.convertMarkdownTables(text, tableMode);
-        // We pass raw text to allow Feishu to handle markdown (lark_md)
+        // Update the stream with new content
+        // Feishu's streaming_config will handle the actual rate limiting
         await currentStream.update(text);
       }
     },

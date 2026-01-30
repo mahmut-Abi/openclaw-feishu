@@ -319,11 +319,13 @@ export function buildInteractiveCard(params: {
 }
 
 /**
- * Create a simple text card for streaming updates.
- * Uses streaming_mode to indicate if the content is still being generated.
+ * Create a simple text card for streaming updates with proper streaming configuration.
+ * Uses Feishu's streaming_config to control update frequency and avoid rate limits.
+ * 
+ * @see https://open.feishu.cn/document/cardkit-v1/streaming-updates-openapi-overview
  */
 export function createSimpleTextCard(content: string, streaming = false): Record<string, unknown> {
-  return {
+  const card: Record<string, unknown> = {
     schema: "2.0",
     config: {
       streaming_mode: streaming,
@@ -338,6 +340,26 @@ export function createSimpleTextCard(content: string, streaming = false): Record
       ],
     },
   };
+
+  // Add streaming_config when streaming is enabled
+  // This tells Feishu how to display progressive updates on the client side
+  // and helps control update frequency to avoid rate limits
+  if (streaming) {
+    (card.config as Record<string, unknown>).summary = {
+      content: "[生成中]",
+    };
+    (card.config as Record<string, unknown>).streaming_config = {
+      // Update frequency in milliseconds
+      // Default 30ms, but we use 50ms for better rate limit safety
+      print_frequency_ms: 50,
+      // Number of characters to display per update
+      print_step: 2,
+      // Update strategy: "fast" for immediate display, "delay" for buffered display
+      print_strategy: "fast",
+    };
+  }
+
+  return card;
 }
 
 /**
