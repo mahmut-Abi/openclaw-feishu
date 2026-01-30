@@ -1,8 +1,8 @@
 {
-  "name": "@m1heng-clawd/feishu",
+  "name": "@m1heng-openclaw/feishu",
   "version": "0.1.2",
   "type": "module",
-  "description": "Clawdbot Feishu/Lark channel plugin",
+  "description": "OpenClaw Feishu/Lark channel plugin",
   "license": "MIT",
   "files": [
     "index.ts",
@@ -12,10 +12,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/m1heng/clawdbot-feishu.git"
+    "url": "git+https://github.com/mahmut-Abi/openclaw-feishu.git"
   },
   "keywords": [
-    "clawdbot",
+    "openclaw",
     "feishu",
     "lark",
     "飞书",
@@ -23,7 +23,7 @@
     "ai",
     "claude"
   ],
-  "clawdbot": {
+  "openclaw": {
     "extensions": [
       "./index.ts"
     ],
@@ -40,7 +40,7 @@
       "order": 70
     },
     "install": {
-      "npmSpec": "@m1heng-clawd/feishu",
+      "npmSpec": "@m1heng-openclaw/feishu",
       "localPath": ".",
       "defaultChoice": "npm"
     }
@@ -51,11 +51,11 @@
   },
   "devDependencies": {
     "@types/node": "^25.0.10",
-    "clawdbot": "2026.1.24-2",
+    "openclaw": "2026.1.24-2",
     "tsx": "^4.21.0",
     "typescript": "^5.7.0"
   },
   "peerDependencies": {
-    "clawdbot": ">=2026.1.24"
+    "openclaw": ">=2026.1.24"
   }
 }
