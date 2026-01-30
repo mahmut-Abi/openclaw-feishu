@@ -375,52 +375,46 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
       onIdle: typingCallbacks.onIdle,
     });
 
+  // Check if streaming is enabled in config
+  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  const streamingEnabled = feishuCfg?.streaming ?? true;
+
   return {
     dispatcher,
     replyOptions: {
       ...replyOptions,
       onModelSelected: prefixContext.onModelSelected,
-      onPartialReply: async (payload: ReplyPayload) => {
-        const text = payload.text ?? "";
-        if (!text) return;
+      ...(streamingEnabled ? {
+        onPartialReply: async (payload: ReplyPayload) => {
+          const text = payload.text ?? "";
+          if (!text) return;
 
-        // Check if streaming is enabled in config
-        const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
-        const streamingEnabled = feishuCfg?.streaming ?? true;
-
-        // Debug: log streaming config
-        params.runtime.log?.(`feishu: onPartialReply called, streamingEnabled=${streamingEnabled}, feishuCfg=${JSON.stringify({ streaming: feishuCfg?.streaming, renderMode: feishuCfg?.renderMode })}`);
-
-        if (!streamingEnabled) {
-          // Streaming disabled, ignore partial replies
-          return;
-        }
-
-        if (!currentStream) {
-          currentStream = new FeishuStream({
-            cfg,
-            chatId,
-            replyToMessageId,
-            runtime: params.runtime,
-          });
-          // Stop specific typing indicator if we start streaming text
-          // (though typingCallbacks.onIdle will be called eventually)
-          if (typingState) {
-            await typingCallbacks.onIdle?.();
+          if (!currentStream) {
+            currentStream = new FeishuStream({
+              cfg,
+              chatId,
+              replyToMessageId,
+              runtime: params.runtime,
+            });
+            // Stop specific typing indicator if we start streaming text
+            // (though typingCallbacks.onIdle will be called eventually)
+            if (typingState) {
+              await typingCallbacks.onIdle?.();
+            }
           }
-        }
 
-        // Check if streaming initialization failed
-        if (currentStream.hasFailed()) {
-          params.runtime.log?.(`feishu: streaming initialization failed, falling back to normal message sending`);
-          currentStream = null;
-          return; // Let the final deliver handle the message
-        }
+          // Check if streaming initialization failed
+          if (currentStream.hasFailed()) {
+            params.runtime.log?.(`feishu: streaming initialization failed, falling back to normal message sending`);
+            currentStream = null;
+            return; // Let the final deliver handle the message
+          }
 
-        // Update the stream with new content
-        // Feishu's streaming_config will handle the actual rate limiting
-        await currentStream.update(text);
-      }
+          // Update the stream with new content
+          // Feishu's streaming_config will handle the actual rate limiting
+          await currentStream.update(text);
+        }
+      } : {}), // When streaming disabled, don't provide onPartialReply so Agent won't generate streaming output
     },
     markDispatchIdle,
   };
