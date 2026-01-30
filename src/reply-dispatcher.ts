@@ -7,7 +7,7 @@ import {
   type ReplyPayload,
 } from "openclaw/plugin-sdk";
 import { getFeishuRuntime } from "./runtime.js";
-import { sendMessageFeishu, sendCardFeishu, updateCardFeishu, createSimpleTextCard, sendMarkdownCardFeishu } from "./send.js";
+import { sendMessageFeishu, sendCardFeishu, updateCardFeishu, createSimpleTextCard, sendMarkdownCardFeishu, createCardEntity, updateCardContent, updateCardSettings, sendCardMessage } from "./send.js";
 import type { FeishuConfig } from "./types.js";
 import {
   addTypingIndicator,
@@ -26,6 +26,7 @@ const MIN_UPDATE_INTERVAL_MS = 300; // Update at most every 300ms
 const RATE_LIMIT_BACKOFF_MULTIPLIER = 2;
 
 class FeishuStream {
+  private cardId: string | null = null;
   private messageId: string | null = null;
   private lastContent = "";
   private lastUpdateTime = 0;
@@ -35,6 +36,7 @@ class FeishuStream {
   private hasInitializationError = false;
   private currentMinInterval = MIN_UPDATE_INTERVAL_MS;
   private rateLimitHitCount = 0;
+  private sequence = 0; // Card update sequence (must be strictly increasing)
 
   constructor(
     private ctx: {
@@ -45,17 +47,21 @@ class FeishuStream {
     },
   ) { }
 
+  private getNextSequence(): number {
+    return ++this.sequence;
+  }
+
   async update(content: string, isFinal = false): Promise<void> {
     if (this.isFinalized) return;
     if (content === this.lastContent) return;
 
-    // If we haven't sent the first message yet, send it immediately
-    if (!this.messageId) {
-      // If we are already creating the message, wait for it
+    // If we haven't created the card entity yet, create it now
+    if (!this.cardId) {
+      // If we are already creating the card entity, wait for it
       if (this.initializationPromise) {
         await this.initializationPromise;
-        // After waiting, if we have a messageId, proceed to update with the current content
-        if (this.messageId) {
+        // After waiting, if we have a cardId, proceed to update with the current content
+        if (this.cardId) {
           // Fall through to update logic below with the current content
         } else {
           // Initialization failed, return silently
@@ -65,15 +71,19 @@ class FeishuStream {
         // Start initialization
         this.initializationPromise = (async () => {
           try {
-            // Use Card with streaming_mode: true and streaming_config
-            // The streaming_config tells Feishu how to display updates on the client
-            // and controls the update frequency to avoid rate limits
-            const card = createSimpleTextCard(content, true /* streaming */);
+            // Step 1: Create card entity
+            const cardId = await createCardEntity({
+              cfg: this.ctx.cfg,
+              content,
+              streaming: true,
+            });
+            this.cardId = cardId;
 
-            const result = await sendCardFeishu({
+            // Step 2: Send message with card_id reference
+            const result = await sendCardMessage({
               cfg: this.ctx.cfg,
               to: this.ctx.chatId,
-              card,
+              cardId,
               replyToMessageId: this.ctx.replyToMessageId,
             });
             this.messageId = result.messageId;
@@ -83,12 +93,12 @@ class FeishuStream {
             // Log initialization only once, showing first 50 chars
             if (!this.loggedInitialization) {
               const preview = content.length > 50 ? content.slice(0, 50) + "..." : content;
-              this.ctx.runtime.log?.(`feishu: stream initialized card messageId=${this.messageId} content="${preview}"`);
+              this.ctx.runtime.log?.(`feishu: stream initialized card cardId=${cardId} messageId=${this.messageId} content="${preview}"`);
               this.loggedInitialization = true;
             }
           } catch (err) {
             this.hasInitializationError = true;
-            this.ctx.runtime.error?.(`feishu stream card initialization failed: ${this.formatError(err, "initialization")}`);
+            this.ctx.runtime.error?.(`feishu stream card entity initialization failed: ${this.formatError(err, "initialization")}`);
           } finally {
             this.initializationPromise = null;
           }
@@ -100,8 +110,6 @@ class FeishuStream {
     }
 
     // Perform the update
-    // Feishu's streaming_config will handle the actual rate limiting on the client side
-    // We just need to send updates as we receive new content
     // No logging during updates to avoid spamming the logs
     const now = Date.now();
     const timeSinceLastUpdate = now - this.lastUpdateTime;
@@ -117,15 +125,15 @@ class FeishuStream {
   }
 
   private async performUpdate(content: string, retryCount = 0): Promise<boolean> {
-    if (!this.messageId || this.isFinalized) return false;
+    if (!this.cardId || this.isFinalized) return false;
     try {
-      // For updates, we keep streaming_mode: true until finalized
-      const card = createSimpleTextCard(content, true);
-
-      await updateCardFeishu({
+      // Update card entity content with streaming mode
+      await updateCardContent({
         cfg: this.ctx.cfg,
-        messageId: this.messageId,
-        card,
+        cardId: this.cardId,
+        content,
+        sequence: this.getNextSequence(),
+        streaming: true,
       });
       this.lastContent = content;
       this.lastUpdateTime = Date.now();
@@ -168,42 +176,48 @@ class FeishuStream {
 
   async finalize(content: string, retryCount = 0): Promise<boolean> {
     if (this.isFinalized) return true;
+    if (!this.cardId) return false;
 
-    // Use streaming_mode: false to signal completion
-    if (this.messageId) {
-      try {
-        const card = createSimpleTextCard(content, false /* streaming=false means done */);
-        await updateCardFeishu({
-          cfg: this.ctx.cfg,
-          messageId: this.messageId,
-          card,
-        });
-        this.isFinalized = true;
+    try {
+      // Step 1: Update card content with streaming mode off
+      await updateCardContent({
+        cfg: this.ctx.cfg,
+        cardId: this.cardId,
+        content,
+        sequence: this.getNextSequence(),
+        streaming: false,
+      });
 
-        // Log finalization with complete content (first 100 chars)
-        const preview = content.length > 100 ? content.slice(0, 100) + "..." : content;
-        this.ctx.runtime.log?.(`feishu: stream finalized card messageId=${this.messageId} totalLength=${content.length} content="${preview}"`);
-        return true;
-      } catch (err) {
-        const errStr = String(err);
-        const isRateLimit = errStr.includes(RATE_LIMIT_ERROR_CODE);
+      // Step 2: Update card settings to disable streaming mode
+      await updateCardSettings({
+        cfg: this.ctx.cfg,
+        cardId: this.cardId,
+        streamingMode: false,
+      });
 
-        // Retry on rate limit errors (max 3 retries with exponential backoff)
-        if (isRateLimit && retryCount < MAX_RETRY_COUNT) {
-          const delay = BASE_RETRY_DELAY_MS * Math.pow(2, retryCount); // 1s, 2s, 4s
-          await new Promise(resolve => setTimeout(resolve, delay));
-          return this.finalize(content, retryCount + 1);
-        }
+      this.isFinalized = true;
 
-        // Log only non-rate-limit errors or if all retries failed
-        if (!isRateLimit || retryCount >= MAX_RETRY_COUNT) {
-          this.ctx.runtime.error?.(`feishu stream finalize failed: ${this.formatError(err, "finalize", retryCount)}`);
-        }
-        return false;
+      // Log finalization with complete content (first 100 chars)
+      const preview = content.length > 100 ? content.slice(0, 100) + "..." : content;
+      this.ctx.runtime.log?.(`feishu: stream finalized card cardId=${this.cardId} messageId=${this.messageId} totalLength=${content.length} content="${preview}"`);
+      return true;
+    } catch (err) {
+      const errStr = String(err);
+      const isRateLimit = errStr.includes(RATE_LIMIT_ERROR_CODE);
+
+      // Retry on rate limit errors (max 3 retries with exponential backoff)
+      if (isRateLimit && retryCount < MAX_RETRY_COUNT) {
+        const delay = BASE_RETRY_DELAY_MS * Math.pow(2, retryCount); // 1s, 2s, 4s
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.finalize(content, retryCount + 1);
       }
-    }
 
-    return false;
+      // Log only non-rate-limit errors or if all retries failed
+      if (!isRateLimit || retryCount >= MAX_RETRY_COUNT) {
+        this.ctx.runtime.error?.(`feishu stream finalize failed: ${this.formatError(err, "finalize", retryCount)}`);
+      }
+      return false;
+    }
   }
 
   hasFailed(): boolean {
@@ -212,6 +226,10 @@ class FeishuStream {
 
   getMessageId(): string | null {
     return this.messageId;
+  }
+
+  getCardId(): string | null {
+    return this.cardId;
   }
 
   private formatError(err: unknown, operation: string, retryCount = 0): string {

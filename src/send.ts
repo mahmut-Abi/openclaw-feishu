@@ -413,3 +413,290 @@ export async function editMessageFeishu(params: {
     throw new Error(`Feishu message edit failed: ${response.msg || `code ${response.code}`}`);
   }
 }
+
+// ============================================================================
+// Card Entity API (流式更新使用卡片实体)
+// ============================================================================
+
+/**
+ * Create a card entity for streaming updates.
+ * Returns the card_id which can be used to send and update the card.
+ *
+ * @see https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card/create
+ */
+export async function createCardEntity(params: {
+  cfg: OpenClawConfig;
+  content: string;
+  streaming?: boolean;
+}): Promise<string> {
+  const { cfg, content, streaming = false } = params;
+  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  if (!feishuCfg) {
+    throw new Error("Feishu channel not configured");
+  }
+
+  const client = createFeishuClient(feishuCfg);
+
+  // Build card JSON
+  const card: Record<string, unknown> = {
+    schema: "2.0",
+    config: {
+      update_multi: true, // Allow multiple updates
+      streaming_mode: streaming,
+    },
+    body: {
+      elements: [
+        {
+          tag: "markdown",
+          content: normalizeMarkdownForFeishu(content || "..."),
+          element_id: "markdown_content",
+        }
+      ],
+    },
+  };
+
+  // Add streaming config if streaming is enabled
+  if (streaming) {
+    (card.config as Record<string, unknown>).summary = {
+      content: "[生成中]",
+    };
+    (card.config as Record<string, unknown>).streaming_config = {
+      print_frequency_ms: {
+        default: 30,
+        android: 25,
+        ios: 40,
+        pc: 50,
+      },
+      print_step: {
+        default: 2,
+        android: 3,
+        ios: 4,
+        pc: 5,
+      },
+      print_strategy: "fast",
+    };
+  }
+
+  // Create card entity
+  const response = await client.cardkit.v1.card.create({
+    data: {
+      type: "card_json",
+      data: JSON.stringify(card),
+    },
+  });
+
+  if (response.code !== 0 || !response.data?.card_id) {
+    throw new Error(`Feishu card entity creation failed: ${response.msg || `code ${response.code}`}`);
+  }
+
+  return response.data.card_id;
+}
+
+/**
+ * Update card entity content.
+ * Requires card_id and sequence number.
+ *
+ * @see https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card/update
+ */
+export async function updateCardContent(params: {
+  cfg: OpenClawConfig;
+  cardId: string;
+  content: string;
+  sequence: number;
+  streaming?: boolean;
+}): Promise<void> {
+  const { cfg, cardId, content, sequence, streaming = false } = params;
+  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  if (!feishuCfg) {
+    throw new Error("Feishu channel not configured");
+  }
+
+  const client = createFeishuClient(feishuCfg);
+
+  // Build card JSON
+  const card: Record<string, unknown> = {
+    schema: "2.0",
+    config: {
+      update_multi: true,
+      streaming_mode: streaming,
+    },
+    body: {
+      elements: [
+        {
+          tag: "markdown",
+          content: normalizeMarkdownForFeishu(content || "..."),
+          element_id: "markdown_content",
+        }
+      ],
+    },
+  };
+
+  // Add streaming config if streaming is enabled
+  if (streaming) {
+    (card.config as Record<string, unknown>).summary = {
+      content: "[生成中]",
+    };
+    (card.config as Record<string, unknown>).streaming_config = {
+      print_frequency_ms: {
+        default: 30,
+        android: 25,
+        ios: 40,
+        pc: 50,
+      },
+      print_step: {
+        default: 2,
+        android: 3,
+        ios: 4,
+        pc: 5,
+      },
+      print_strategy: "fast",
+    };
+  }
+
+  // Create Card object (required by SDK)
+  const cardObj = {
+    type: "card_json" as const,
+    data: JSON.stringify(card),
+  };
+
+  // Update card entity
+  const response = await client.cardkit.v1.card.update({
+    path: { card_id: cardId },
+    data: {
+      card: cardObj,
+      sequence,
+    },
+  });
+
+  if (response.code !== 0) {
+    throw new Error(`Feishu card content update failed: ${response.msg || `code ${response.code}`}`);
+  }
+}
+
+/**
+ * Update card entity configuration (e.g., streaming_mode).
+ * Used to end streaming mode by setting streaming_mode to false.
+ *
+ * @see https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card/settings
+ */
+export async function updateCardSettings(params: {
+  cfg: OpenClawConfig;
+  cardId: string;
+  streamingMode: boolean;
+}): Promise<void> {
+  const { cfg, cardId, streamingMode } = params;
+  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  if (!feishuCfg) {
+    throw new Error("Feishu channel not configured");
+  }
+
+  const client = createFeishuClient(feishuCfg);
+
+  // Build settings
+  const settings: Record<string, unknown> = {
+    streaming_mode: streamingMode,
+  };
+
+  // Remove summary when streaming ends
+  if (!streamingMode) {
+    // No summary in settings when streaming is complete
+  }
+
+  // Update card settings
+  const response = await client.cardkit.v1.card.settings({
+    path: { card_id: cardId },
+    data: {
+      settings: JSON.stringify(settings),
+      sequence: 1, // Settings update sequence
+    },
+  });
+
+  if (response.code !== 0) {
+    throw new Error(`Feishu card settings update failed: ${response.msg || `code ${response.code}`}`);
+  }
+}
+
+/**
+ * Send a card message.
+ * Note: Card entity approach requires a different flow.
+ * For now, we use the standard card message approach.
+ *
+ * @see https://open.feishu.cn/document/server-docs/im/message/create
+ */
+export async function sendCardMessage(params: {
+  cfg: OpenClawConfig;
+  to: string;
+  cardId: string;
+  replyToMessageId?: string;
+}): Promise<FeishuSendResult> {
+  const { cfg, to, cardId, replyToMessageId } = params;
+  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  if (!feishuCfg) {
+    throw new Error("Feishu channel not configured");
+  }
+
+  const client = createFeishuClient(feishuCfg);
+  const receiveId = normalizeFeishuTarget(to);
+  if (!receiveId) {
+    throw new Error(`Invalid Feishu target: ${to}`);
+  }
+
+  const receiveIdType = resolveReceiveIdType(receiveId);
+
+  // Build card message - for card entity approach, we send a simple card
+  // The actual content will be updated via cardkit API
+  const card: Record<string, unknown> = {
+    schema: "2.0",
+    config: {
+      wide_screen_mode: true,
+    },
+    body: {
+      elements: [
+        {
+          tag: "markdown",
+          content: "Loading...",
+          element_id: "markdown_content",
+        },
+      ],
+    },
+  };
+
+  const content = JSON.stringify(card);
+
+  if (replyToMessageId) {
+    const response = await client.im.message.reply({
+      path: { message_id: replyToMessageId },
+      data: {
+        content,
+        msg_type: "interactive",
+      },
+    });
+
+    if (response.code !== 0) {
+      throw new Error(`Feishu card reply failed: ${response.msg || `code ${response.code}`}`);
+    }
+
+    return {
+      messageId: response.data?.message_id ?? "unknown",
+      chatId: receiveId,
+    };
+  }
+
+  const response = await client.im.message.create({
+    params: { receive_id_type: receiveIdType },
+    data: {
+      receive_id: receiveId,
+      content,
+      msg_type: "interactive",
+    },
+  });
+
+  if (response.code !== 0) {
+    throw new Error(`Feishu card send failed: ${response.msg || `code ${response.code}`}`);
+  }
+
+  return {
+    messageId: response.data?.message_id ?? "unknown",
+    chatId: receiveId,
+  };
+}

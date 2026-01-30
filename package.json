@@ -11,7 +11,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/mahmut-Abi/openclaw-feishu.git"
+    "url": "git+https://github.com/mahmut-Abi/openclaw-feishu.git"
   },
   "homepage": "https://github.com/mahmut-Abi/openclaw-feishu#readme",
   "bugs": {
