@@ -50,8 +50,6 @@ class FeishuStream {
         }
       } else {
         // Start initialization
-        this.ctx.runtime.log?.(`feishu stream: initializing card with "${content.slice(0, 20)}..."`);
-
         this.initializationPromise = (async () => {
           try {
             // Use Card with streaming_mode: true and streaming_config
@@ -68,7 +66,6 @@ class FeishuStream {
             this.messageId = result.messageId;
             this.lastContent = content;
             this.lastUpdateTime = Date.now();
-            this.ctx.runtime.log?.(`feishu stream: initialized card messageId=${this.messageId}`);
           } catch (err) {
             this.ctx.runtime.error?.(`feishu stream card create failed: ${String(err)}`);
           } finally {
@@ -104,7 +101,7 @@ class FeishuStream {
       // Don't spam logs on rate limit errors (code 230020)
       const errStr = String(err);
       if (!errStr.includes('230020')) {
-        this.ctx.runtime.log?.(`feishu stream update failed: ${errStr}`);
+        this.ctx.runtime.error?.(`feishu stream update failed: ${errStr}`);
       }
     }
   }
@@ -164,13 +161,11 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
 
       if (!replyToMessageId) return;
       typingState = await addTypingIndicator({ cfg, messageId: replyToMessageId });
-      params.runtime.log?.(`feishu: added typing indicator reaction`);
     },
     stop: async () => {
       if (!typingState) return;
       await removeTypingIndicator({ cfg, state: typingState });
       typingState = null;
-      params.runtime.log?.(`feishu: removed typing indicator reaction`);
     },
     onStartError: (err) => {
       // Squelch errors
@@ -198,7 +193,6 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
       humanDelay: core.channel.reply.resolveHumanDelayConfig(cfg, agentId),
       onReplyStart: typingCallbacks.onReplyStart,
       deliver: async (payload: ReplyPayload) => {
-        params.runtime.log?.(`feishu deliver called: text=${payload.text?.slice(0, 100)}`);
         const text = payload.text ?? "";
         if (!text.trim()) {
           return;
@@ -222,7 +216,6 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
         if (useCard) {
           // Card mode: send as interactive card with markdown rendering
           const chunks = core.channel.text.chunkTextWithMode(text, textChunkLimit, chunkMode);
-          params.runtime.log?.(`feishu deliver: sending ${chunks.length} card chunks to ${chatId}`);
           for (const chunk of chunks) {
             await sendMarkdownCardFeishu({
               cfg,
@@ -235,7 +228,6 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
           // Raw mode: send as plain text with table conversion
           const converted = core.channel.text.convertMarkdownTables(text, tableMode);
           const chunks = core.channel.text.chunkTextWithMode(converted, textChunkLimit, chunkMode);
-          params.runtime.log?.(`feishu deliver: sending ${chunks.length} text chunks to ${chatId}`);
           for (const chunk of chunks) {
             await sendMessageFeishu({
               cfg,
