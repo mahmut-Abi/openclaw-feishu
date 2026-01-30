@@ -369,6 +369,10 @@ export function createSimpleTextCard(content: string, streaming = false): Record
       // Update strategy: "fast" for immediate display, "delay" for buffered display
       print_strategy: "fast",
     };
+  } else {
+    // When streaming is complete, only keep streaming_mode: false
+    // Do NOT include summary or streaming_config - this ensures Feishu client
+    // completely removes the streaming state
   }
 
   return card;
