@@ -97,6 +97,135 @@ channels:
     renderMode: "auto"
 ```
 
+#### Complete Configuration Example
+
+```yaml
+channels:
+  feishu:
+    # Enable/disable the channel
+    enabled: true
+
+    # Feishu App credentials
+    appId: "cli_xxxxxxxxxxxxxxxx"
+    appSecret: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+    # Domain: "feishu" (China) or "lark" (International)
+    domain: "feishu"
+
+    # Connection mode: "websocket" (recommended) or "webhook"
+    connectionMode: "websocket"
+
+    # Webhook configuration (only for webhook mode)
+    webhookPath: "/feishu/events"
+    webhookPort: 3000
+
+    # Encryption settings (optional, for webhook mode)
+    encryptKey: "your_encrypt_key"
+    verificationToken: "your_verification_token"
+
+    # Direct message policy
+    dmPolicy: "pairing"  # "pairing" | "open" | "allowlist"
+    allowFrom: ["*"]  # For "open" policy, must include "*"
+
+    # Group chat policy
+    groupPolicy: "allowlist"  # "open" | "allowlist" | "disabled"
+    groupAllowFrom: ["oc_xxxxxxxxxxxxxxxx", "user_id"]
+    requireMention: true  # Require @mention in groups
+
+    # Media settings
+    mediaMaxMb: 30  # Max media file size in MB
+
+    # Render mode for bot replies
+    renderMode: "auto"  # "auto" | "raw" | "card"
+
+    # Markdown settings
+    markdown:
+      mode: "native"  # "native" | "escape" | "strip"
+      tableMode: "native"  # "native" | "ascii" | "simple"
+
+    # Message history limits
+    historyLimit: 100  # Max messages to fetch for group chats
+    dmHistoryLimit: 50  # Max messages to fetch for DMs
+
+    # Text chunk settings for long messages
+    textChunkLimit: 2000  # Max characters per chunk
+    chunkMode: "length"  # "length" | "newline"
+
+    # Streaming coalesce settings
+    blockStreamingCoalesce:
+      enabled: true
+      minDelayMs: 100
+      maxDelayMs: 500
+
+    # Heartbeat visibility settings
+    heartbeat:
+      visibility: "hidden"  # "visible" | "hidden"
+      intervalMs: 300000  # 5 minutes
+
+    # Per-group configuration (overrides global settings)
+    groups:
+      "oc_group_id_1":
+        enabled: true
+        requireMention: false
+        systemPrompt: "You are a helpful assistant"
+        skills: ["web_search", "file_analysis"]
+        tools:
+          allow: ["*"]
+        allowFrom: ["user_id_1", "user_id_2"]
+
+    # Per-DM configuration
+    dms:
+      "user_id_1":
+        enabled: true
+        systemPrompt: "You are a personal assistant"
+
+    # Capabilities (optional)
+    capabilities: ["send", "receive", "media"]
+```
+
+#### Configuration Reference
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | boolean | - | Enable/disable the channel |
+| `appId` | string | - | Feishu App ID |
+| `appSecret` | string | - | Feishu App Secret |
+| `domain` | enum | `"feishu"` | `"feishu"` (China) or `"lark"` (International) |
+| `connectionMode` | enum | `"websocket"` | `"websocket"` or `"webhook"` |
+| `webhookPath` | string | `"/feishu/events"` | Webhook endpoint path (webhook mode) |
+| `webhookPort` | number | - | Webhook server port (webhook mode) |
+| `encryptKey` | string | - | Encryption key (webhook mode, optional) |
+| `verificationToken` | string | - | Verification token (webhook mode, optional) |
+| `dmPolicy` | enum | `"pairing"` | `"pairing"` | `"open"` | `"allowlist"` |
+| `allowFrom` | array | - | Allowed users for DM (for "open" policy, must include `"*"`) |
+| `groupPolicy` | enum | `"allowlist"` | `"open"` | `"allowlist"` | `"disabled"` |
+| `groupAllowFrom` | array | - | Allowed group IDs (for "allowlist" policy) |
+| `requireMention` | boolean | `true` | Require @mention in groups |
+| `mediaMaxMb` | number | `30` | Max media file size in MB |
+| `renderMode` | enum | `"auto"` | `"auto"` | `"raw"` | `"card"` |
+| `historyLimit` | number | - | Max messages to fetch for group chats |
+| `dmHistoryLimit` | number | - | Max messages to fetch for DMs |
+| `textChunkLimit` | number | - | Max characters per message chunk |
+| `chunkMode` | enum | - | `"length"` or `"newline"` |
+| `markdown.mode` | enum | - | `"native"` | `"escape"` | `"strip"` |
+| `markdown.tableMode` | enum | - | `"native"` | `"ascii"` | `"simple"` |
+
+#### DM Policies
+
+| Policy | Description |
+|--------|-------------|
+| `pairing` | Users must send `/pair` command to initiate DM with the bot |
+| `open` | Anyone can DM the bot (requires `allowFrom: ["*"]`) |
+| `allowlist` | Only users in `allowFrom` list can DM the bot |
+
+#### Group Policies
+
+| Policy | Description |
+|--------|-------------|
+| `open` | Bot responds to all groups where it's added |
+| `allowlist` | Bot only responds to groups in `groupAllowFrom` list |
+| `disabled` | Bot doesn't respond to group messages |
+
 #### Render Mode
 
 | Mode | Description |
@@ -249,6 +378,135 @@ channels:
     # 回复渲染模式: "auto" | "raw" | "card"
     renderMode: "auto"
 ```
+
+#### 完整配置示例
+
+```yaml
+channels:
+  feishu:
+    # 启用/禁用频道
+    enabled: true
+
+    # 飞书应用凭证
+    appId: "cli_xxxxxxxxxxxxxxxx"
+    appSecret: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+    # 域名: "feishu" (国内) 或 "lark" (国际)
+    domain: "feishu"
+
+    # 连接模式: "websocket" (推荐) 或 "webhook"
+    connectionMode: "websocket"
+
+    # Webhook 配置（仅用于 webhook 模式）
+    webhookPath: "/feishu/events"
+    webhookPort: 3000
+
+    # 加密设置（可选，用于 webhook 模式）
+    encryptKey: "your_encrypt_key"
+    verificationToken: "your_verification_token"
+
+    # 私聊策略
+    dmPolicy: "pairing"  # "pairing" | "open" | "allowlist"
+    allowFrom: ["*"]  # "open" 策略必须包含 "*"
+
+    # 群聊策略
+    groupPolicy: "allowlist"  # "open" | "allowlist" | "disabled"
+    groupAllowFrom: ["oc_xxxxxxxxxxxxxxxx", "user_id"]
+    requireMention: true  # 群聊是否需要 @机器人
+
+    # 媒体设置
+    mediaMaxMb: 30  # 媒体文件最大大小（MB）
+
+    # 回复渲染模式
+    renderMode: "auto"  # "auto" | "raw" | "card"
+
+    # Markdown 设置
+    markdown:
+      mode: "native"  # "native" | "escape" | "strip"
+      tableMode: "native"  # "native" | "ascii" | "simple"
+
+    # 消息历史记录限制
+    historyLimit: 100  # 群聊获取的最大消息数
+    dmHistoryLimit: 50  # 私聊获取的最大消息数
+
+    # 文本分块设置（长消息）
+    textChunkLimit: 2000  # 每块最大字符数
+    chunkMode: "length"  # "length" | "newline"
+
+    # 流式更新合并设置
+    blockStreamingCoalesce:
+      enabled: true
+      minDelayMs: 100
+      maxDelayMs: 500
+
+    # 心跳可见性设置
+    heartbeat:
+      visibility: "hidden"  # "visible" | "hidden"
+      intervalMs: 300000  # 5 分钟
+
+    # 每个群组的配置（覆盖全局设置）
+    groups:
+      "oc_group_id_1":
+        enabled: true
+        requireMention: false
+        systemPrompt: "你是一个有用的助手"
+        skills: ["web_search", "file_analysis"]
+        tools:
+          allow: ["*"]
+        allowFrom: ["user_id_1", "user_id_2"]
+
+    # 每个私聊的配置
+    dms:
+      "user_id_1":
+        enabled: true
+        systemPrompt: "你是我的个人助手"
+
+    # 能力（可选）
+    capabilities: ["send", "receive", "media"]
+```
+
+#### 配置参数参考
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `enabled` | boolean | - | 启用/禁用频道 |
+| `appId` | string | - | 飞书应用 ID |
+| `appSecret` | string | - | 飞书应用密钥 |
+| `domain` | enum | `"feishu"` | `"feishu"`（国内）或 `"lark"`（国际） |
+| `connectionMode` | enum | `"websocket"` | `"websocket"` 或 `"webhook"` |
+| `webhookPath` | string | `"/feishu/events"` | Webhook 端点路径（webhook 模式） |
+| `webhookPort` | number | - | Webhook 服务器端口（webhook 模式） |
+| `encryptKey` | string | - | 加密密钥（webhook 模式，可选） |
+| `verificationToken` | string | - | 验证令牌（webhook 模式，可选） |
+| `dmPolicy` | enum | `"pairing"` | `"pairing"` | `"open"` | `"allowlist"` |
+| `allowFrom` | array | - | 允许私聊的用户（"open" 策略必须包含 `"*"`） |
+| `groupPolicy` | enum | `"allowlist"` | `"open"` | `"allowlist"` | `"disabled"` |
+| `groupAllowFrom` | array | - | 允许的群组 ID（"allowlist" 策略） |
+| `requireMention` | boolean | `true` | 群聊是否需要 @机器人 |
+| `mediaMaxMb` | number | `30` | 媒体文件最大大小（MB） |
+| `renderMode` | enum | `"auto"` | `"auto"` | `"raw"` | `"card"` |
+| `historyLimit` | number | - | 群聊获取的最大消息数 |
+| `dmHistoryLimit` | number | - | 私聊获取的最大消息数 |
+| `textChunkLimit` | number | - | 每条消息块的最大字符数 |
+| `chunkMode` | enum | - | `"length"` 或 `"newline"` |
+| `markdown.mode` | enum | - | `"native"` | `"escape"` | `"strip"` |
+| `markdown.tableMode` | enum | - | `"native"` | `"ascii"` | `"simple"` |
+
+#### 私聊策略
+
+| 策略 | 说明 |
+|------|------|
+| `pairing` | 用户必须发送 `/pair` 命令才能开始与机器人私聊 |
+| `open` | 任何人都可以与机器人私聊（需要 `allowFrom: ["*"]`） |
+| `allowlist` | 只有 `allowFrom` 列表中的用户可以与机器人私聊 |
+
+#### 群聊策略
+
+| 策略 | 说明 |
+|------|------|
+| `open` | 机器人响应所有添加了它的群组 |
+| `allowlist` | 机器人只响应 `groupAllowFrom` 列表中的群组 |
+| `disabled` | 机器人不响应群组消息 |
 
 #### 渲染模式
 
