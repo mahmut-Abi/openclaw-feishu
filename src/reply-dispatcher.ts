@@ -356,6 +356,8 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
           return;
         }
 
+        params.runtime.log?.(`[feishu] deliver called: text="${text.slice(0, 50)}${text.length > 50 ? '...' : ''}" totalLength=${text.length} hasActiveStream=${!!currentStream}`);
+
         // If we have an active stream, finalize it with the raw content
         if (currentStream) {
           const success = await currentStream.finalize(text);
