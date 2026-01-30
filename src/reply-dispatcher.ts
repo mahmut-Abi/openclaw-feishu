@@ -20,6 +20,10 @@ import { shouldUseCard } from "./markdown.js";
 const MAX_RETRY_COUNT = 3;
 const RATE_LIMIT_ERROR_CODE = "230020";
 const BASE_RETRY_DELAY_MS = 1000;
+// Minimum interval between updates to avoid rate limits (in milliseconds)
+const MIN_UPDATE_INTERVAL_MS = 300; // Update at most every 300ms
+// When rate limit is hit, increase the interval exponentially
+const RATE_LIMIT_BACKOFF_MULTIPLIER = 2;
 
 class FeishuStream {
   private messageId: string | null = null;
@@ -29,6 +33,8 @@ class FeishuStream {
   private initializationPromise: Promise<void> | null = null;
   private loggedInitialization = false;
   private hasInitializationError = false;
+  private currentMinInterval = MIN_UPDATE_INTERVAL_MS;
+  private rateLimitHitCount = 0;
 
   constructor(
     private ctx: {
@@ -97,6 +103,16 @@ class FeishuStream {
     // Feishu's streaming_config will handle the actual rate limiting on the client side
     // We just need to send updates as we receive new content
     // No logging during updates to avoid spamming the logs
+    const now = Date.now();
+    const timeSinceLastUpdate = now - this.lastUpdateTime;
+
+    // Throttle updates to avoid rate limits
+    // Skip updates that are too frequent, unless this is the final update
+    if (!isFinal && timeSinceLastUpdate < this.currentMinInterval) {
+      // Skip this update to avoid hitting rate limits
+      return;
+    }
+
     await this.performUpdate(content);
   }
 
@@ -113,10 +129,27 @@ class FeishuStream {
       });
       this.lastContent = content;
       this.lastUpdateTime = Date.now();
+
+      // Reset interval if update succeeds
+      if (this.currentMinInterval > MIN_UPDATE_INTERVAL_MS) {
+        this.currentMinInterval = MIN_UPDATE_INTERVAL_MS;
+        this.rateLimitHitCount = 0;
+      }
+
       return true;
     } catch (err) {
       const errStr = String(err);
       const isRateLimit = errStr.includes(RATE_LIMIT_ERROR_CODE);
+
+      // Increase update interval when rate limit is hit
+      if (isRateLimit) {
+        this.rateLimitHitCount++;
+        // Exponentially increase the minimum interval
+        this.currentMinInterval = Math.min(
+          MIN_UPDATE_INTERVAL_MS * Math.pow(RATE_LIMIT_BACKOFF_MULTIPLIER, this.rateLimitHitCount),
+          5000 // Cap at 5 seconds
+        );
+      }
 
       // Retry on rate limit errors (max 3 retries with exponential backoff)
       if (isRateLimit && retryCount < MAX_RETRY_COUNT) {
