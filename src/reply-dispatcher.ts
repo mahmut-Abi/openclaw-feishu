@@ -16,6 +16,11 @@ import {
 } from "./typing.js";
 import { shouldUseCard } from "./markdown.js";
 
+// Constants for error handling and retry logic
+const MAX_RETRY_COUNT = 3;
+const RATE_LIMIT_ERROR_CODE = "230020";
+const BASE_RETRY_DELAY_MS = 1000;
+
 class FeishuStream {
   private messageId: string | null = null;
   private lastContent = "";
@@ -23,6 +28,7 @@ class FeishuStream {
   private isFinalized = false;
   private initializationPromise: Promise<void> | null = null;
   private loggedInitialization = false;
+  private hasInitializationError = false;
 
   constructor(
     private ctx: {
@@ -46,7 +52,7 @@ class FeishuStream {
         if (this.messageId) {
           // Fall through to update logic below with the current content
         } else {
-          // Initialization failed or something weird happened
+          // Initialization failed, return silently
           return;
         }
       } else {
@@ -75,7 +81,8 @@ class FeishuStream {
               this.loggedInitialization = true;
             }
           } catch (err) {
-            this.ctx.runtime.error?.(`feishu stream card create failed: ${String(err)}`);
+            this.hasInitializationError = true;
+            this.ctx.runtime.error?.(`feishu stream card initialization failed: ${this.formatError(err, "initialization")}`);
           } finally {
             this.initializationPromise = null;
           }
@@ -93,8 +100,8 @@ class FeishuStream {
     await this.performUpdate(content);
   }
 
-  private async performUpdate(content: string) {
-    if (!this.messageId || this.isFinalized) return;
+  private async performUpdate(content: string, retryCount = 0): Promise<boolean> {
+    if (!this.messageId || this.isFinalized) return false;
     try {
       // For updates, we keep streaming_mode: true until finalized
       const card = createSimpleTextCard(content, true);
@@ -106,17 +113,28 @@ class FeishuStream {
       });
       this.lastContent = content;
       this.lastUpdateTime = Date.now();
+      return true;
     } catch (err) {
-      // Don't spam logs on rate limit errors (code 230020)
       const errStr = String(err);
-      if (!errStr.includes('230020')) {
-        this.ctx.runtime.error?.(`feishu stream update failed: ${errStr}`);
+      const isRateLimit = errStr.includes(RATE_LIMIT_ERROR_CODE);
+
+      // Retry on rate limit errors (max 3 retries with exponential backoff)
+      if (isRateLimit && retryCount < MAX_RETRY_COUNT) {
+        const delay = BASE_RETRY_DELAY_MS * Math.pow(2, retryCount); // 1s, 2s, 4s
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.performUpdate(content, retryCount + 1);
       }
+
+      // Log only non-rate-limit errors or if all retries failed
+      if (!isRateLimit || retryCount >= MAX_RETRY_COUNT) {
+        this.ctx.runtime.error?.(`feishu stream update failed: ${this.formatError(err, "update", retryCount)}`);
+      }
+      return false;
     }
   }
 
-  async finalize(content: string) {
-    if (this.isFinalized) return;
+  async finalize(content: string, retryCount = 0): Promise<boolean> {
+    if (this.isFinalized) return true;
 
     // Use streaming_mode: false to signal completion
     if (this.messageId) {
@@ -132,14 +150,43 @@ class FeishuStream {
         // Log finalization with complete content (first 100 chars)
         const preview = content.length > 100 ? content.slice(0, 100) + "..." : content;
         this.ctx.runtime.log?.(`feishu: stream finalized card messageId=${this.messageId} totalLength=${content.length} content="${preview}"`);
+        return true;
       } catch (err) {
-        this.ctx.runtime.error?.(`feishu stream finalize failed: ${String(err)}`);
+        const errStr = String(err);
+        const isRateLimit = errStr.includes(RATE_LIMIT_ERROR_CODE);
+
+        // Retry on rate limit errors (max 3 retries with exponential backoff)
+        if (isRateLimit && retryCount < MAX_RETRY_COUNT) {
+          const delay = BASE_RETRY_DELAY_MS * Math.pow(2, retryCount); // 1s, 2s, 4s
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return this.finalize(content, retryCount + 1);
+        }
+
+        // Log only non-rate-limit errors or if all retries failed
+        if (!isRateLimit || retryCount >= MAX_RETRY_COUNT) {
+          this.ctx.runtime.error?.(`feishu stream finalize failed: ${this.formatError(err, "finalize", retryCount)}`);
+        }
+        return false;
       }
     }
+
+    return false;
+  }
+
+  hasFailed(): boolean {
+    return this.hasInitializationError;
   }
 
   getMessageId(): string | null {
     return this.messageId;
+  }
+
+  private formatError(err: unknown, operation: string, retryCount = 0): string {
+    const errStr = String(err);
+    const codeMatch = errStr.match(/code\s*[:=]\s*(\d+)/);
+    const code = codeMatch ? codeMatch[1] : "unknown";
+    const retryInfo = retryCount > 0 ? ` (retry ${retryCount}/${MAX_RETRY_COUNT})` : "";
+    return `[${operation}${retryInfo}] code=${code} error=${errStr.slice(0, 200)}`;
   }
 }
 
@@ -166,6 +213,41 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
 
   // Track active stream for the current block
   let currentStream: FeishuStream | null = null;
+
+  // Helper function to send fallback message when streaming fails
+  const sendFallbackMessage = async (text: string): Promise<void> => {
+    const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+    const renderMode = feishuCfg?.renderMode ?? "auto";
+
+    // Determine if we should use card for this message
+    const useCard =
+      renderMode === "card" || (renderMode === "auto" && shouldUseCard(text));
+
+    if (useCard) {
+      // Card mode: send as interactive card with markdown rendering
+      const chunks = core.channel.text.chunkTextWithMode(text, textChunkLimit, chunkMode);
+      for (const chunk of chunks) {
+        await sendMarkdownCardFeishu({
+          cfg,
+          to: chatId,
+          text: chunk,
+          replyToMessageId,
+        });
+      }
+    } else {
+      // Raw mode: send as plain text with table conversion
+      const converted = core.channel.text.convertMarkdownTables(text, tableMode);
+      const chunks = core.channel.text.chunkTextWithMode(converted, textChunkLimit, chunkMode);
+      for (const chunk of chunks) {
+        await sendMessageFeishu({
+          cfg,
+          to: chatId,
+          text: chunk,
+          replyToMessageId,
+        });
+      }
+    }
+  };
 
   const typingCallbacks = createTypingCallbacks({
     start: async () => {
@@ -213,43 +295,20 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
 
         // If we have an active stream, finalize it with the raw content
         if (currentStream) {
-          await currentStream.finalize(text);
-          currentStream = null;
+          const success = await currentStream.finalize(text);
+
+          // If streaming failed, fallback to normal message sending
+          if (!success) {
+            params.runtime.log?.(`feishu: streaming failed, falling back to normal message sending`);
+            currentStream = null;
+            await sendFallbackMessage(text);
+          } else {
+            currentStream = null;
+          }
           return;
         }
 
-        // Check render mode: auto (default), raw, or card
-        const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
-        const renderMode = feishuCfg?.renderMode ?? "auto";
-
-        // Determine if we should use card for this message
-        const useCard =
-          renderMode === "card" || (renderMode === "auto" && shouldUseCard(text));
-
-        if (useCard) {
-          // Card mode: send as interactive card with markdown rendering
-          const chunks = core.channel.text.chunkTextWithMode(text, textChunkLimit, chunkMode);
-          for (const chunk of chunks) {
-            await sendMarkdownCardFeishu({
-              cfg,
-              to: chatId,
-              text: chunk,
-              replyToMessageId,
-            });
-          }
-        } else {
-          // Raw mode: send as plain text with table conversion
-          const converted = core.channel.text.convertMarkdownTables(text, tableMode);
-          const chunks = core.channel.text.chunkTextWithMode(converted, textChunkLimit, chunkMode);
-          for (const chunk of chunks) {
-            await sendMessageFeishu({
-              cfg,
-              to: chatId,
-              text: chunk,
-              replyToMessageId,
-            });
-          }
-        }
+        await sendFallbackMessage(text);
       },
       onError: (err, info) => {
         params.runtime.error?.(`feishu ${info.kind} reply failed: ${String(err)}`);
@@ -288,6 +347,13 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
           if (typingState) {
             await typingCallbacks.onIdle?.();
           }
+        }
+
+        // Check if streaming initialization failed
+        if (currentStream.hasFailed()) {
+          params.runtime.log?.(`feishu: streaming initialization failed, falling back to normal message sending`);
+          currentStream = null;
+          return; // Let the final deliver handle the message
         }
 
         // Update the stream with new content
