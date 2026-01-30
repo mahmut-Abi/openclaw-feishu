@@ -1,177 +1,252 @@
 /**
- * Markdown preprocessing utilities for Feishu cards.
- * Ensures markdown content is properly formatted for Feishu's markdown renderer.
+ * Markdown processing utilities for Feishu cards.
+ * Uses unified/remark for robust markdown parsing and processing.
  */
+
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkGfm from "remark-gfm";
+import remarkStringify from "remark-stringify";
+import type { Root, Paragraph, Text, Code, InlineCode, Strong, Emphasis, Delete, Link, Image, Heading, List, ListItem, Blockquote, ThematicBreak, Table } from "mdast";
 
 /**
  * Normalize markdown content for Feishu cards.
- * This function ensures:
- * - Code blocks have proper language identifiers
- * - Tables are properly formatted
- * - Lists are properly formatted
- * - Links and images are properly formatted
- * - Other markdown elements are compatible with Feishu
+ * Uses unified/remark to parse and normalize markdown properly.
  */
 export function normalizeMarkdownForFeishu(text: string): string {
   if (!text) return "";
 
-  let result = text;
+  try {
+    const processor = unified()
+      .use(remarkParse)
+      .use(remarkGfm)
+      .use(normalizeCodeBlocks)
+      .use(normalizeTables)
+      .use(remarkStringify);
 
-  // Ensure code blocks have language identifiers
-  result = normalizeCodeBlocks(result);
-
-  // Normalize tables
-  result = normalizeTables(result);
-
-  // Normalize lists
-  result = normalizeLists(result);
-
-  // Normalize links and images
-  result = normalizeLinks(result);
-
-  // Ensure proper spacing around headers
-  result = normalizeHeaders(result);
-
-  // Normalize blockquotes
-  result = normalizeBlockquotes(result);
-
-  // Normalize horizontal rules
-  result = normalizeHorizontalRules(result);
-
-  return result;
+    const result = processor.processSync(text);
+    return String(result);
+  } catch (error) {
+    // Fallback to original text if processing fails
+    console.error("Markdown normalization failed:", error);
+    return text;
+  }
 }
 
 /**
- * Normalize code blocks to ensure they have language identifiers.
- * Feishu supports 70+ languages for syntax highlighting.
+ * Remark plugin to normalize code blocks.
+ * Ensures code blocks have proper language identifiers.
  */
-function normalizeCodeBlocks(text: string): string {
-  // Match code blocks without language identifier
-  // Pattern: ``` followed immediately by newline (no language)
-  return text.replace(/^```(\s*\n)/gm, '```text$1');
+function normalizeCodeBlocks() {
+  return (tree: Root) => {
+    const visit = (node: unknown, callback: (node: unknown) => void) => {
+      if (!node || typeof node !== "object") return;
+      
+      if ("type" in node && node.type === "code") {
+        const codeNode = node as Code;
+        // Ensure code blocks have a language identifier
+        if (!codeNode.lang || codeNode.lang.trim() === "") {
+          codeNode.lang = "text";
+        }
+      }
+      
+      if ("children" in node && Array.isArray(node.children)) {
+        for (const child of node.children) {
+          visit(child, callback);
+        }
+      }
+    };
+    
+    visit(tree, () => {});
+  };
 }
 
 /**
- * Normalize markdown tables to ensure proper formatting.
- * Feishu supports markdown tables with proper pipe syntax.
+ * Remark plugin to normalize tables.
+ * Ensures tables have proper formatting for Feishu.
  */
-function normalizeTables(text: string): string {
-  // Ensure tables have proper spacing around pipes
-  // This is a basic normalization; more complex table handling may be needed
-  return text
-    // Add space after pipe if missing
-    .replace(/\|([^ \n])/g, '| $1')
-    // Add space before pipe if missing
-    .replace(/([^ \n])\|/g, '$1 |');
-}
-
-/**
- * Normalize markdown lists to ensure proper formatting.
- */
-function normalizeLists(text: string): string {
-  // Ensure there's a space between list marker and content
-  // Unordered lists
-  let result = text.replace(/^(\s*[-*+])([^\s])/gm, '$1 $2');
-  // Ordered lists
-  result = result.replace(/^(\s*\d+\.)([^\s])/gm, '$1 $2');
-
-  return result;
-}
-
-/**
- * Normalize markdown links and images.
- */
-function normalizeLinks(text: string): string {
-  // Ensure links have proper format: [text](url)
-  // Ensure images have proper format: ![alt](url)
-  // This is mainly for validation; most links should be fine
-  return text;
-}
-
-/**
- * Normalize markdown headers to ensure proper spacing.
- */
-function normalizeHeaders(text: string): string {
-  // Ensure there's a space after # in headers
-  return text.replace(/^(#{1,6})([^\s#])/gm, '$1 $2');
-}
-
-/**
- * Normalize markdown blockquotes.
- */
-function normalizeBlockquotes(text: string): string {
-  // Ensure there's a space after > in blockquotes
-  return text.replace(/^>([^\s])/gm, '> $1');
-}
-
-/**
- * Normalize markdown horizontal rules.
- */
-function normalizeHorizontalRules(text: string): string {
-  // Ensure horizontal rules are on their own line
-  return text
-    .replace(/^(\s*)(---|\*\*\*|___)(\s*)$/gm, '$1---$3')
-    .replace(/([^\n])(---|\*\*\*|___)([^\n])/g, '$1\n$2\n$3');
+function normalizeTables() {
+  return (tree: Root) => {
+    const visit = (node: unknown) => {
+      if (!node || typeof node !== "object") return;
+      
+      if ("type" in node && node.type === "table") {
+        const tableNode = node as Table;
+        // Ensure table has proper structure
+        // Feishu requires at least one row
+        if (!tableNode.children || tableNode.children.length === 0) {
+          // Remove empty tables
+          return;
+        }
+      }
+      
+      if ("children" in node && Array.isArray(node.children)) {
+        for (const child of node.children) {
+          visit(child);
+        }
+      }
+    };
+    
+    visit(tree);
+  };
 }
 
 /**
  * Check if text contains markdown elements that benefit from card rendering.
- * Used by auto render mode.
+ * Uses unified/remark to parse and check the AST.
  */
 export function shouldUseCard(text: string): boolean {
-  // Code blocks (fenced)
-  if (/```[\s\S]*?```/.test(text)) return true;
-  // Inline code
-  if (/`[^`]+`/.test(text)) return true;
-  // Tables (at least header + separator row with |)
-  if (/\|.+\|[\r\n]+\|[-:| ]+\|/.test(text)) return true;
-  // Headers
-  if (/^#{1,6}\s/m.test(text)) return true;
-  // Bold/italic
-  if (/(\*\*[^*]+\*\*)|(\*[^*]+\*\*)|(__[^_]+__)|(_[^_]+_)/.test(text)) return true;
-  // Strikethrough
-  if (/~~[^~]+~~/.test(text)) return true;
-  // Links
-  if (/\[([^\]]+)\]\(([^)]+)\)/.test(text)) return true;
-  // Images
-  if (/!\[([^\]]*)\]\(([^)]+)\)/.test(text)) return true;
-  // Blockquotes
-  if (/^>[\s>]/m.test(text)) return true;
-  // Lists (unordered or ordered)
-  if (/^(\s*[-*+]|\s*\d+\.)\s/m.test(text)) return true;
-  // Horizontal rules
-  if (/^(\s{0,3}(---|\*\*\*|___)\s*)$/m.test(text)) return true;
+  if (!text) return false;
 
-  return false;
+  try {
+    const processor = unified()
+      .use(remarkParse)
+      .use(remarkGfm);
+
+    const tree = processor.parse(text);
+
+    // Check for various markdown elements in the AST
+    const hasMarkdownElements = (node: unknown): boolean => {
+      if (!node || typeof node !== "object") return false;
+
+      const typedNode = node as { type?: string; children?: unknown[] };
+
+      switch (typedNode.type) {
+        case "code":
+          return true; // Code blocks
+        case "inlineCode":
+          return true; // Inline code
+        case "heading":
+          return true; // Headers
+        case "strong":
+          return true; // Bold
+        case "emphasis":
+          return true; // Italic
+        case "delete":
+          return true; // Strikethrough
+        case "link":
+          return true; // Links
+        case "image":
+          return true; // Images
+        case "blockquote":
+          return true; // Blockquotes
+        case "thematicBreak":
+          return true; // Horizontal rules
+        case "table":
+          return true; // Tables
+        case "list":
+          return true; // Lists
+        case "paragraph":
+          // Check if paragraph contains any inline markdown
+          if (typedNode.children) {
+            return typedNode.children.some(child => hasMarkdownElements(child));
+          }
+          return false;
+        default:
+          // Recursively check children
+          if (typedNode.children && typedNode.children.length > 0) {
+            return typedNode.children.some(child => hasMarkdownElements(child));
+          }
+          return false;
+      }
+    };
+
+    return hasMarkdownElements(tree);
+  } catch (error) {
+    // Fallback: check for basic markdown patterns
+    return /(```|`|#{1,6}\s|\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~|\[[^\]]+\]\([^)]+\)|!\[[^\]]*\]\([^)]+\)|^>[\s>]|^(\s*[-*+]|\s*\d+\.)\s|^(\s{0,3}(---|\*\*\*|___)\s*)$)/m.test(text);
+  }
 }
 
 /**
  * Convert markdown tables to ASCII format for plain text mode.
- * This is used when renderMode is "raw".
+ * Uses unified/remark to parse and convert tables.
  */
 export function convertTablesToAscii(text: string): string {
-  // Simple table to ASCII conversion
-  // For complex tables, a more sophisticated approach may be needed
-  return text.replace(/\|.+\|[\r\n]+\|[-:| ]+\|[\r\n]+((?:\|.+\|[\r\n]+)+)/g, (match) => {
-    const lines = match.trim().split('\n');
-    const asciiLines: string[] = [];
+  if (!text) return "";
 
-    for (const line of lines) {
-      // Skip separator line
-      if (/^[\| ]+[-+: ]+[\| ]+$/.test(line)) continue;
+  try {
+    const processor = unified()
+      .use(remarkParse)
+      .use(remarkGfm)
+      .use(convertTablesToAsciiPlugin);
 
-      // Convert pipe-separated line to text
-      const text = line
-        .replace(/^\|/, '')
-        .replace(/\|$/, '')
-        .split('|')
-        .map(cell => cell.trim())
-        .join(' | ');
+    const result = processor.processSync(text);
+    return String(result);
+  } catch (error) {
+    // Fallback to original text if processing fails
+    console.error("Table conversion failed:", error);
+    return text;
+  }
+}
 
-      if (text) asciiLines.push(text);
-    }
+/**
+ * Remark plugin to convert tables to ASCII format.
+ */
+function convertTablesToAsciiPlugin() {
+  return (tree: Root) => {
+    const visit = (node: unknown, parent: unknown, index?: number) => {
+      if (!node || typeof node !== "object") return;
 
-    if (asciiLines.length === 0) return match;
-    return asciiLines.join('\n') + '\n';
-  });
+      if ("type" in node && node.type === "table") {
+        const tableNode = node as Table;
+        
+        // Convert table to ASCII text
+        const asciiLines: string[] = [];
+        
+        for (const row of tableNode.children) {
+          if (row.type === "tableRow") {
+            const cells = row.children
+              .filter(child => child.type === "tableCell")
+              .map(cell => {
+                // Extract text content from cell
+                const cellText = extractTextFromNode(cell);
+                return cellText.trim();
+              });
+            
+            if (cells.length > 0) {
+              asciiLines.push(cells.join(" | "));
+            }
+          }
+        }
+        
+        // Replace table node with paragraph containing ASCII text
+        if (asciiLines.length > 0 && parent && typeof parent === "object" && "children" in parent && Array.isArray(parent.children) && index !== undefined) {
+          const textNode: Paragraph = {
+            type: "paragraph",
+            children: [{
+              type: "text",
+              value: asciiLines.join("\n")
+            }]
+          };
+          (parent.children as unknown[])[index] = textNode;
+        }
+      } else if ("children" in node && Array.isArray(node.children)) {
+        for (let i = 0; i < node.children.length; i++) {
+          visit(node.children[i], node, i);
+        }
+      }
+    };
+    
+    visit(tree, null, undefined);
+  };
+}
+
+/**
+ * Extract plain text from an AST node.
+ */
+function extractTextFromNode(node: unknown): string {
+  if (!node || typeof node !== "object") return "";
+
+  const typedNode = node as { type?: string; value?: string; children?: unknown[] };
+
+  if (typedNode.type === "text" && typedNode.value) {
+    return typedNode.value;
+  }
+
+  if (typedNode.children && typedNode.children.length > 0) {
+    return typedNode.children.map(child => extractTextFromNode(child)).join("");
+  }
+
+  return "";
 }
