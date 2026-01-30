@@ -18,9 +18,12 @@ import { shouldUseCard } from "./markdown.js";
 
 // Constants for error handling and retry logic
 const MAX_RETRY_COUNT = 3;
-const RATE_LIMIT_ERROR_CODE = "230020";
+const RATE_LIMIT_ERROR_CODE = "230020"; // Old rate limit error code
+const STREAMING_RATE_LIMIT_ERROR_CODE = "99991400"; // Streaming rate limit error code
 const BASE_RETRY_DELAY_MS = 1000;
 // Minimum interval between updates to avoid rate limits (in milliseconds)
+// Single card limit: 10 times/second => 100ms minimum
+// We use 300ms (3.3 times/second) to stay well within limits
 const MIN_UPDATE_INTERVAL_MS = 300; // Update at most every 300ms
 // When rate limit is hit, increase the interval exponentially
 const RATE_LIMIT_BACKOFF_MULTIPLIER = 2;
@@ -147,7 +150,9 @@ class FeishuStream {
       return true;
     } catch (err) {
       const errStr = String(err);
-      const isRateLimit = errStr.includes(RATE_LIMIT_ERROR_CODE);
+      const isRateLimit =
+        errStr.includes(RATE_LIMIT_ERROR_CODE) ||
+        errStr.includes(STREAMING_RATE_LIMIT_ERROR_CODE);
 
       // Increase update interval when rate limit is hit
       if (isRateLimit) {
@@ -203,7 +208,9 @@ class FeishuStream {
       return true;
     } catch (err) {
       const errStr = String(err);
-      const isRateLimit = errStr.includes(RATE_LIMIT_ERROR_CODE);
+      const isRateLimit =
+        errStr.includes(RATE_LIMIT_ERROR_CODE) ||
+        errStr.includes(STREAMING_RATE_LIMIT_ERROR_CODE);
 
       // Retry on rate limit errors (max 3 retries with exponential backoff)
       if (isRateLimit && retryCount < MAX_RETRY_COUNT) {
