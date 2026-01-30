@@ -260,6 +260,11 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
   const core = getFeishuRuntime();
   const { cfg, agentId, chatId, replyToMessageId } = params;
 
+  // Log streaming configuration for debugging
+  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  const streamingEnabled = feishuCfg?.streaming ?? true;
+  params.runtime.log?.(`[feishu] dispatcher initialized: streamingEnabled=${streamingEnabled}, renderMode=${feishuCfg?.renderMode ?? 'auto'}`);
+
   const prefixContext = createReplyPrefixContext({
     cfg,
     agentId,
@@ -374,10 +379,6 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
       },
       onIdle: typingCallbacks.onIdle,
     });
-
-  // Check if streaming is enabled in config
-  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
-  const streamingEnabled = feishuCfg?.streaming ?? true;
 
   return {
     dispatcher,
