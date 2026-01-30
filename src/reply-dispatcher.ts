@@ -22,6 +22,7 @@ class FeishuStream {
   private lastUpdateTime = 0;
   private isFinalized = false;
   private initializationPromise: Promise<void> | null = null;
+  private loggedInitialization = false;
 
   constructor(
     private ctx: {
@@ -66,6 +67,13 @@ class FeishuStream {
             this.messageId = result.messageId;
             this.lastContent = content;
             this.lastUpdateTime = Date.now();
+
+            // Log initialization only once, showing first 50 chars
+            if (!this.loggedInitialization) {
+              const preview = content.length > 50 ? content.slice(0, 50) + "..." : content;
+              this.ctx.runtime.log?.(`feishu: stream initialized card messageId=${this.messageId} content="${preview}"`);
+              this.loggedInitialization = true;
+            }
           } catch (err) {
             this.ctx.runtime.error?.(`feishu stream card create failed: ${String(err)}`);
           } finally {
@@ -81,6 +89,7 @@ class FeishuStream {
     // Perform the update
     // Feishu's streaming_config will handle the actual rate limiting on the client side
     // We just need to send updates as we receive new content
+    // No logging during updates to avoid spamming the logs
     await this.performUpdate(content);
   }
 
@@ -119,6 +128,10 @@ class FeishuStream {
           card,
         });
         this.isFinalized = true;
+
+        // Log finalization with complete content (first 100 chars)
+        const preview = content.length > 100 ? content.slice(0, 100) + "..." : content;
+        this.ctx.runtime.log?.(`feishu: stream finalized card messageId=${this.messageId} totalLength=${content.length} content="${preview}"`);
       } catch (err) {
         this.ctx.runtime.error?.(`feishu stream finalize failed: ${String(err)}`);
       }
