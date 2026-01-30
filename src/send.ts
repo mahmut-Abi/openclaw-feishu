@@ -246,15 +246,18 @@ export async function updateCardFeishu(params: {
  */
 export function buildMarkdownCard(text: string): Record<string, unknown> {
   return {
+    schema: "2.0",
     config: {
       wide_screen_mode: true,
     },
-    elements: [
-      {
-        tag: "markdown",
-        content: normalizeMarkdownForFeishu(text),
-      },
-    ],
+    body: {
+      elements: [
+        {
+          tag: "markdown",
+          content: normalizeMarkdownForFeishu(text),
+        },
+      ],
+    },
   };
 }
 
