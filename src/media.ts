@@ -256,27 +256,37 @@ export async function uploadFileFeishu(params: {
   const fileStream =
     typeof file === "string" ? fs.createReadStream(file) : Readable.from(file);
 
-  const response = await client.im.file.create({
-    data: {
-      file_type: fileType,
-      file_name: fileName,
-      file: fileStream as any,
-      ...(duration !== undefined && { duration }),
-    },
-  });
+  // Log upload details for debugging
+  const fileSize = typeof file === "string" ? (fs.existsSync(file) ? fs.statSync(file).size : 0) : file.length;
+  const logFn = (feishuCfg as any).runtime?.log ?? console.log;
+  logFn?.(`[feishu] uploading file: fileName=${fileName}, fileType=${fileType}, fileSize=${fileSize}${duration !== undefined ? `, duration=${duration}` : ''}`);
 
-  // SDK v1.30+ returns data directly without code wrapper on success
-  const responseAny = response as any;
-  if (responseAny.code !== undefined && responseAny.code !== 0) {
-    throw new Error(`Feishu file upload failed: ${responseAny.msg || `code ${responseAny.code}`}`);
+  try {
+    const response = await client.im.file.create({
+      data: {
+        file_type: fileType,
+        file_name: fileName,
+        file: fileStream as any,
+        ...(duration !== undefined && { duration }),
+      },
+    });
+
+    // SDK v1.30+ returns data directly without code wrapper on success
+    const responseAny = response as any;
+    if (responseAny.code !== undefined && responseAny.code !== 0) {
+      throw new Error(`Feishu file upload failed: ${responseAny.msg || `code ${responseAny.code}`}`);
+    }
+
+    const fileKey = responseAny.file_key ?? responseAny.data?.file_key;
+    if (!fileKey) {
+      throw new Error("Feishu file upload failed: no file_key returned");
+    }
+
+    return { fileKey };
+  } catch (error) {
+    logFn?.(`[feishu] file upload error: ${String(error)}`);
+    throw error;
   }
-
-  const fileKey = responseAny.file_key ?? responseAny.data?.file_key;
-  if (!fileKey) {
-    throw new Error("Feishu file upload failed: no file_key returned");
-  }
-
-  return { fileKey };
 }
 
 /**
