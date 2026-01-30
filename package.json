@@ -1,5 +1,5 @@
 {
-  "name": "@m1heng-openclaw/feishu",
+  "name": "@mahmut-abi/feishu",
   "version": "0.1.2",
   "type": "module",
   "description": "OpenClaw Feishu/Lark channel plugin",
@@ -40,7 +40,7 @@
       "order": 70
     },
     "install": {
-      "npmSpec": "@m1heng-openclaw/feishu",
+      "npmSpec": "@mahmut-abi/feishu",
       "localPath": ".",
       "defaultChoice": "npm"
     }
