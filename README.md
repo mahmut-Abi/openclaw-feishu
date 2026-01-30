@@ -11,13 +11,13 @@ Feishu/Lark (飞书) channel plugin for [OpenClaw](https://github.com/openclaw/o
 ### Installation
 
 ```bash
-openclaw plugins install @m1heng-clawd/feishu
+openclaw plugins install @mahmut-abi/feishu
 ```
 
 Or install via npm:
 
 ```bash
-npm install @m1heng-clawd/feishu
+npm install @mahmut-abi/feishu
 ```
 
 ### Configuration
@@ -137,7 +137,7 @@ Send `/new` command in the chat.
 
 #### Why is the output not streaming
 
-Feishu API has rate limits. Streaming updates can easily trigger throttling. We use complete-then-send approach for stability.
+Feishu API has rate limits. We use Feishu's native streaming configuration (`streaming_config`) to handle updates on the client side, which provides a smooth streaming experience while respecting rate limits.
 
 #### Windows install error `spawn npm ENOENT`
 
@@ -145,10 +145,10 @@ If `openclaw plugins install` fails, install manually:
 
 ```bash
 # 1. Download the package
-curl -O https://registry.npmjs.org/@m1heng-clawd/feishu/-/feishu-0.1.1.tgz
+curl -O https://registry.npmjs.org/@mahmut-abi/feishu/-/feishu-0.1.4.tgz
 
 # 2. Install from local file
-openclaw plugins install ./feishu-0.1.1.tgz
+openclaw plugins install ./feishu-0.1.4.tgz
 ```
 
 #### Cannot find the bot in Feishu
@@ -164,13 +164,13 @@ openclaw plugins install ./feishu-0.1.1.tgz
 ### 安装
 
 ```bash
-openclaw plugins install @m1heng-clawd/feishu
+openclaw plugins install @mahmut-abi/feishu
 ```
 
 或通过 npm 安装：
 
 ```bash
-npm install @m1heng-clawd/feishu
+npm install @mahmut-abi/feishu
 ```
 
 ### 配置
@@ -290,7 +290,7 @@ channels:
 
 #### 消息为什么不是流式输出
 
-飞书 API 有请求频率限制，流式更新消息很容易触发限流。当前采用完整回复后一次性发送的方式，以保证稳定性。
+飞书 API 有请求频率限制。我们使用飞书原生的流式配置（`streaming_config`）在客户端处理更新，在遵守频率限制的同时提供流畅的流式体验。
 
 #### Windows 安装报错 `spawn npm ENOENT`
 
@@ -298,10 +298,10 @@ channels:
 
 ```bash
 # 1. 下载插件包
-curl -O https://registry.npmjs.org/@m1heng-clawd/feishu/-/feishu-0.1.1.tgz
+curl -O https://registry.npmjs.org/@mahmut-abi/feishu/-/feishu-0.1.4.tgz
 
 # 2. 从本地安装
-openclaw plugins install ./feishu-0.1.1.tgz
+openclaw plugins install ./feishu-0.1.4.tgz
 ```
 
 #### 在飞书里找不到机器人
