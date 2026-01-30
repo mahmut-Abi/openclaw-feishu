@@ -1,5 +1,5 @@
-import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
-import { DEFAULT_ACCOUNT_ID } from "clawdbot/plugin-sdk";
+import type { OpenClawConfig } from "openclaw/plugin-sdk";
+import { DEFAULT_ACCOUNT_ID } from "openclaw/plugin-sdk";
 import type { FeishuConfig, FeishuDomain, ResolvedFeishuAccount } from "./types.js";
 
 export function resolveFeishuCredentials(cfg?: FeishuConfig): {
@@ -22,7 +22,7 @@ export function resolveFeishuCredentials(cfg?: FeishuConfig): {
 }
 
 export function resolveFeishuAccount(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   accountId?: string | null;
 }): ResolvedFeishuAccount {
   const feishuCfg = params.cfg.channels?.feishu as FeishuConfig | undefined;
@@ -38,15 +38,15 @@ export function resolveFeishuAccount(params: {
   };
 }
 
-export function listFeishuAccountIds(_cfg: ClawdbotConfig): string[] {
+export function listFeishuAccountIds(_cfg: OpenClawConfig): string[] {
   return [DEFAULT_ACCOUNT_ID];
 }
 
-export function resolveDefaultFeishuAccountId(_cfg: ClawdbotConfig): string {
+export function resolveDefaultFeishuAccountId(_cfg: OpenClawConfig): string {
   return DEFAULT_ACCOUNT_ID;
 }
 
-export function listEnabledFeishuAccounts(cfg: ClawdbotConfig): ResolvedFeishuAccount[] {
+export function listEnabledFeishuAccounts(cfg: OpenClawConfig): ResolvedFeishuAccount[] {
   return listFeishuAccountIds(cfg)
     .map((accountId) => resolveFeishuAccount({ cfg, accountId }))
     .filter((account) => account.enabled && account.configured);

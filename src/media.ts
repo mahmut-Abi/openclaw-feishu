@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
+import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import type { FeishuConfig } from "./types.js";
 import { createFeishuClient } from "./client.js";
 import { resolveReceiveIdType, normalizeFeishuTarget } from "./targets.js";
@@ -23,7 +23,7 @@ export type DownloadMessageResourceResult = {
  * Used for downloading images sent in messages.
  */
 export async function downloadImageFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   imageKey: string;
 }): Promise<DownloadImageResult> {
   const { cfg, imageKey } = params;
@@ -99,7 +99,7 @@ export async function downloadImageFeishu(params: {
  * Used for downloading files, audio, and video from messages.
  */
 export async function downloadMessageResourceFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   messageId: string;
   fileKey: string;
   type: "image" | "file";
@@ -193,7 +193,7 @@ export type SendMediaResult = {
  * Supports: JPEG, PNG, WEBP, GIF, TIFF, BMP, ICO
  */
 export async function uploadImageFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   image: Buffer | string; // Buffer or file path
   imageType?: "message" | "avatar";
 }): Promise<UploadImageResult> {
@@ -237,7 +237,7 @@ export async function uploadImageFeishu(params: {
  * Max file size: 30MB
  */
 export async function uploadFileFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   file: Buffer | string; // Buffer or file path
   fileName: string;
   fileType: "opus" | "mp4" | "pdf" | "doc" | "xls" | "ppt" | "stream";
@@ -283,7 +283,7 @@ export async function uploadFileFeishu(params: {
  * Send an image message using an image_key
  */
 export async function sendImageFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   imageKey: string;
   replyToMessageId?: string;
@@ -345,7 +345,7 @@ export async function sendImageFeishu(params: {
  * Send a file message using a file_key
  */
 export async function sendFileFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   fileKey: string;
   replyToMessageId?: string;
@@ -455,7 +455,7 @@ function isLocalPath(urlOrPath: string): boolean {
  * Upload and send media (image or file) from URL, local path, or buffer
  */
 export async function sendMediaFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   mediaUrl?: string;
   mediaBuffer?: Buffer;

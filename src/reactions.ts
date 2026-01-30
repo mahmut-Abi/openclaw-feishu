@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
+import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import type { FeishuConfig } from "./types.js";
 import { createFeishuClient } from "./client.js";
 
@@ -15,7 +15,7 @@ export type FeishuReaction = {
  * @see https://open.feishu.cn/document/server-docs/im-v1/message-reaction/emojis-introduce
  */
 export async function addReactionFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   messageId: string;
   emojiType: string;
 }): Promise<{ reactionId: string }> {
@@ -56,7 +56,7 @@ export async function addReactionFeishu(params: {
  * Remove a reaction from a message.
  */
 export async function removeReactionFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   messageId: string;
   reactionId: string;
 }): Promise<void> {
@@ -84,7 +84,7 @@ export async function removeReactionFeishu(params: {
  * List all reactions for a message.
  */
 export async function listReactionsFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   messageId: string;
   emojiType?: string;
 }): Promise<FeishuReaction[]> {

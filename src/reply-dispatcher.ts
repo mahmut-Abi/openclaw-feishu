@@ -2,10 +2,10 @@ import {
   createReplyPrefixContext,
   createTypingCallbacks,
   logTypingFailure,
-  type ClawdbotConfig,
+  type OpenClawConfig,
   type RuntimeEnv,
   type ReplyPayload,
-} from "clawdbot/plugin-sdk";
+} from "openclaw/plugin-sdk";
 import { getFeishuRuntime } from "./runtime.js";
 import { sendMessageFeishu, sendCardFeishu, updateCardFeishu, createSimpleTextCard, sendMarkdownCardFeishu } from "./send.js";
 import type { FeishuConfig } from "./types.js";
@@ -41,7 +41,7 @@ class FeishuStream {
 
   constructor(
     private ctx: {
-      cfg: ClawdbotConfig;
+      cfg: OpenClawConfig;
       chatId: string;
       replyToMessageId?: string;
       runtime: RuntimeEnv;
@@ -157,7 +157,7 @@ class FeishuStream {
 }
 
 export type CreateFeishuReplyDispatcherParams = {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   agentId: string;
   runtime: RuntimeEnv;
   chatId: string;

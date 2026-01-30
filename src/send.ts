@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
+import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import type { FeishuConfig, FeishuSendResult } from "./types.js";
 import { createFeishuClient } from "./client.js";
 import { resolveReceiveIdType, normalizeFeishuTarget } from "./targets.js";
@@ -19,7 +19,7 @@ export type FeishuMessageInfo = {
  * Useful for fetching quoted/replied message content.
  */
 export async function getMessageFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   messageId: string;
 }): Promise<FeishuMessageInfo | null> {
   const { cfg, messageId } = params;
@@ -87,7 +87,7 @@ export async function getMessageFeishu(params: {
 }
 
 export type SendFeishuMessageParams = {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   text: string;
   replyToMessageId?: string;
@@ -154,7 +154,7 @@ export async function sendMessageFeishu(params: SendFeishuMessageParams): Promis
 }
 
 export type SendFeishuCardParams = {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   card: Record<string, unknown>;
   replyToMessageId?: string;
@@ -215,7 +215,7 @@ export async function sendCardFeishu(params: SendFeishuCardParams): Promise<Feis
 }
 
 export async function updateCardFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   messageId: string;
   card: Record<string, unknown>;
 }): Promise<void> {
@@ -261,7 +261,7 @@ export function buildMarkdownCard(text: string): Record<string, unknown> {
  * This renders markdown properly in Feishu (code blocks, tables, bold/italic, etc.)
  */
 export async function sendMarkdownCardFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   text: string;
   replyToMessageId?: string;
@@ -345,7 +345,7 @@ export function createSimpleTextCard(content: string, streaming = false): Record
  * Note: Feishu only allows editing messages within 24 hours.
  */
 export async function editMessageFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   messageId: string;
   text: string;
 }): Promise<void> {

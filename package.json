@@ -1,13 +1,12 @@
 {
   "name": "@mahmut-abi/feishu",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "description": "OpenClaw Feishu/Lark channel plugin",
   "license": "MIT",
   "files": [
     "index.ts",
     "src",
-    "clawdbot.plugin.json",
     "openclaw.plugin.json"
   ],
   "repository": {
@@ -55,11 +54,14 @@
   },
   "devDependencies": {
     "@types/node": "^25.0.10",
-    "openclaw": "2026.1.24-2",
+    "openclaw": "2026.1.29",
     "tsx": "^4.21.0",
     "typescript": "^5.7.0"
   },
   "peerDependencies": {
-    "openclaw": ">=2026.1.24"
+    "openclaw": ">=2026.1.29"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
