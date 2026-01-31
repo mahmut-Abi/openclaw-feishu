@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
+import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import type { FeishuConfig } from "./types.js";
 import { createFeishuClient } from "./client.js";
 import { resolveReceiveIdType, normalizeFeishuTarget } from "./targets.js";
@@ -23,7 +23,7 @@ export type DownloadMessageResourceResult = {
  * Used for downloading images sent in messages.
  */
 export async function downloadImageFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   imageKey: string;
 }): Promise<DownloadImageResult> {
   const { cfg, imageKey } = params;
@@ -99,7 +99,7 @@ export async function downloadImageFeishu(params: {
  * Used for downloading files, audio, and video from messages.
  */
 export async function downloadMessageResourceFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   messageId: string;
   fileKey: string;
   type: "image" | "file";
@@ -193,7 +193,7 @@ export type SendMediaResult = {
  * Supports: JPEG, PNG, WEBP, GIF, TIFF, BMP, ICO
  */
 export async function uploadImageFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   image: Buffer | string; // Buffer or file path
   imageType?: "message" | "avatar";
 }): Promise<UploadImageResult> {
@@ -205,31 +205,68 @@ export async function uploadImageFeishu(params: {
 
   const client = createFeishuClient(feishuCfg);
 
-  // SDK expects a Readable stream, not a Buffer
-  // Use type assertion since SDK actually accepts any Readable at runtime
-  const imageStream =
-    typeof image === "string" ? fs.createReadStream(image) : Readable.from(image);
+  let fileInput: string | Buffer;
+  let fileName: string;
 
-  const response = await client.im.image.create({
-    data: {
-      image_type: imageType,
-      image: imageStream as any,
-    },
-  });
-
-  // SDK v1.30+ returns data directly without code wrapper on success
-  // On error, it throws or returns { code, msg }
-  const responseAny = response as any;
-  if (responseAny.code !== undefined && responseAny.code !== 0) {
-    throw new Error(`Feishu image upload failed: ${responseAny.msg || `code ${responseAny.code}`}`);
+  if (typeof image === "string") {
+    fileInput = image;
+    fileName = path.basename(image);
+  } else {
+    // For Buffer, create a temporary file and use it
+    // This ensures the SDK gets a proper file stream
+    const tempDir = os.tmpdir();
+    fileName = `upload_${Date.now()}_${Math.random().toString(36).substring(7)}.bin`;
+    const tempFilePath = path.join(tempDir, fileName);
+    fs.writeFileSync(tempFilePath, image);
+    fileInput = tempFilePath;
   }
 
-  const imageKey = responseAny.image_key ?? responseAny.data?.image_key;
-  if (!imageKey) {
-    throw new Error("Feishu image upload failed: no image_key returned");
-  }
+  const logFn = (feishuCfg as any).runtime?.log ?? console.log;
+  const fileSize = typeof fileInput === "string" ? (fs.existsSync(fileInput) ? fs.statSync(fileInput).size : 0) : (fileInput as Buffer).length;
+  logFn?.(`[feishu] uploading image: fileName=${fileName}, imageType=${imageType}, fileSize=${fileSize}`);
 
-  return { imageKey };
+  try {
+    const response = await client.im.image.create({
+      data: {
+        image_type: imageType,
+        image: fileInput as any,
+      },
+    });
+
+    // SDK v1.30+ returns data directly without code wrapper on success
+    // On error, it throws or returns { code, msg }
+    const responseAny = response as any;
+    if (responseAny.code !== undefined && responseAny.code !== 0) {
+      throw new Error(`Feishu image upload failed: ${responseAny.msg || `code ${responseAny.code}`}`);
+    }
+
+    const imageKey = responseAny.image_key ?? responseAny.data?.image_key;
+    if (!imageKey) {
+      throw new Error("Feishu image upload failed: no image_key returned");
+    }
+
+    // Clean up temp file if it was created
+    if (typeof image !== "string" && typeof fileInput === "string") {
+      try {
+        fs.unlinkSync(fileInput);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
+
+    return { imageKey };
+  } catch (error) {
+    logFn?.(`[feishu] image upload error: ${String(error)}`);
+    // Clean up temp file on error
+    if (typeof image !== "string" && typeof fileInput === "string") {
+      try {
+        fs.unlinkSync(fileInput);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
+    throw error;
+  }
 }
 
 /**
@@ -237,7 +274,7 @@ export async function uploadImageFeishu(params: {
  * Max file size: 30MB
  */
 export async function uploadFileFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   file: Buffer | string; // Buffer or file path
   fileName: string;
   fileType: "opus" | "mp4" | "pdf" | "doc" | "xls" | "ppt" | "stream";
@@ -251,39 +288,77 @@ export async function uploadFileFeishu(params: {
 
   const client = createFeishuClient(feishuCfg);
 
-  // SDK expects a Readable stream, not a Buffer
-  // Use type assertion since SDK actually accepts any Readable at runtime
-  const fileStream =
-    typeof file === "string" ? fs.createReadStream(file) : Readable.from(file);
+  let fileInput: string | Buffer;
+  let actualFileName: string;
 
-  const response = await client.im.file.create({
-    data: {
-      file_type: fileType,
-      file_name: fileName,
-      file: fileStream as any,
-      ...(duration !== undefined && { duration }),
-    },
-  });
-
-  // SDK v1.30+ returns data directly without code wrapper on success
-  const responseAny = response as any;
-  if (responseAny.code !== undefined && responseAny.code !== 0) {
-    throw new Error(`Feishu file upload failed: ${responseAny.msg || `code ${responseAny.code}`}`);
+  if (typeof file === "string") {
+    fileInput = file;
+    actualFileName = fileName;
+  } else {
+    // For Buffer, create a temporary file and use it
+    // This ensures the SDK gets a proper file stream
+    const tempDir = os.tmpdir();
+    actualFileName = fileName;
+    const tempFilePath = path.join(tempDir, `upload_${Date.now()}_${Math.random().toString(36).substring(7)}.${actualFileName.split('.').pop() || 'bin'}`);
+    fs.writeFileSync(tempFilePath, file);
+    fileInput = tempFilePath;
   }
 
-  const fileKey = responseAny.file_key ?? responseAny.data?.file_key;
-  if (!fileKey) {
-    throw new Error("Feishu file upload failed: no file_key returned");
-  }
+  // Log upload details for debugging
+  const fileSize = typeof fileInput === "string" ? (fs.existsSync(fileInput) ? fs.statSync(fileInput).size : 0) : (fileInput as Buffer).length;
+  const logFn = (feishuCfg as any).runtime?.log ?? console.log;
+  logFn?.(`[feishu] uploading file: fileName=${actualFileName}, fileType=${fileType}, fileSize=${fileSize}${duration !== undefined ? `, duration=${duration}` : ''}`);
 
-  return { fileKey };
+  try {
+    const response = await client.im.file.create({
+      data: {
+        file_type: fileType,
+        file_name: actualFileName,
+        file: fileInput as any,
+        ...(duration !== undefined && { duration }),
+      },
+    });
+
+    // SDK v1.30+ returns data directly without code wrapper on success
+    const responseAny = response as any;
+    if (responseAny.code !== undefined && responseAny.code !== 0) {
+      throw new Error(`Feishu file upload failed: ${responseAny.msg || `code ${responseAny.code}`}`);
+    }
+
+    const fileKey = responseAny.file_key ?? responseAny.data?.file_key;
+    if (!fileKey) {
+      throw new Error("Feishu file upload failed: no file_key returned");
+    }
+
+    // Clean up temp file if it was created
+    if (typeof file !== "string" && typeof fileInput === "string") {
+      try {
+        fs.unlinkSync(fileInput);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
+
+    return { fileKey };
+  } catch (error) {
+    logFn?.(`[feishu] file upload error: ${String(error)}`);
+    // Clean up temp file on error
+    if (typeof file !== "string" && typeof fileInput === "string") {
+      try {
+        fs.unlinkSync(fileInput);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
+    throw error;
+  }
 }
 
 /**
  * Send an image message using an image_key
  */
 export async function sendImageFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   imageKey: string;
   replyToMessageId?: string;
@@ -345,7 +420,7 @@ export async function sendImageFeishu(params: {
  * Send a file message using a file_key
  */
 export async function sendFileFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   fileKey: string;
   replyToMessageId?: string;
@@ -455,7 +530,7 @@ function isLocalPath(urlOrPath: string): boolean {
  * Upload and send media (image or file) from URL, local path, or buffer
  */
 export async function sendMediaFeishu(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   mediaUrl?: string;
   mediaBuffer?: Buffer;

@@ -1,6 +1,6 @@
-import type { ChannelOutboundAdapter } from "clawdbot/plugin-sdk";
+import type { ChannelOutboundAdapter } from "openclaw/plugin-sdk";
 import { getFeishuRuntime } from "./runtime.js";
-import { sendMessageFeishu } from "./send.js";
+import { sendMessageFeishu, sendCardFeishu, sendMarkdownCardFeishu } from "./send.js";
 import { sendMediaFeishu } from "./media.js";
 
 export const feishuOutbound: ChannelOutboundAdapter = {
@@ -9,7 +9,24 @@ export const feishuOutbound: ChannelOutboundAdapter = {
   chunkerMode: "markdown",
   textChunkLimit: 4000,
   sendText: async ({ cfg, to, text }) => {
-    const result = await sendMessageFeishu({ cfg, to, text });
+    const feishuCfg = cfg.channels?.feishu as Record<string, unknown> | undefined;
+    const renderMode = feishuCfg?.renderMode ?? "auto";
+
+    // Use markdown card if renderMode is "card", otherwise use plain text
+    if (renderMode === "card") {
+      const result = await sendMarkdownCardFeishu({ cfg, to, text });
+      return { channel: "feishu", ...result };
+    } else {
+      const result = await sendMessageFeishu({ cfg, to, text });
+      return { channel: "feishu", ...result };
+    }
+  },
+  sendCard: async ({ cfg, to, card }) => {
+    const result = await sendCardFeishu({ cfg, to, card });
+    return { channel: "feishu", ...result };
+  },
+  sendMarkdown: async ({ cfg, to, text }) => {
+    const result = await sendMarkdownCardFeishu({ cfg, to, text });
     return { channel: "feishu", ...result };
   },
   sendMedia: async ({ cfg, to, text, mediaUrl }) => {

@@ -1,6 +1,6 @@
-# clawd-feishu
+# openclaw-feishu
 
-Feishu/Lark (飞书) channel plugin for [Clawdbot](https://github.com/clawdbot/clawdbot).
+Feishu/Lark (飞书) channel plugin for [OpenClaw](https://github.com/openclaw/openclaw).
 
 [English](#english) | [中文](#中文)
 
@@ -11,13 +11,13 @@ Feishu/Lark (飞书) channel plugin for [Clawdbot](https://github.com/clawdbot/c
 ### Installation
 
 ```bash
-clawdbot plugins install @m1heng-clawd/feishu
+openclaw plugins install @mahmut-abi/feishu
 ```
 
 Or install via npm:
 
 ```bash
-npm install @m1heng-clawd/feishu
+npm install @mahmut-abi/feishu
 ```
 
 ### Configuration
@@ -68,9 +68,9 @@ In the Feishu Open Platform console, go to **Events & Callbacks**:
 3. Ensure the event permissions are approved
 
 ```bash
-clawdbot config set channels.feishu.appId "cli_xxxxx"
-clawdbot config set channels.feishu.appSecret "your_app_secret"
-clawdbot config set channels.feishu.enabled true
+openclaw config set channels.feishu.appId "cli_xxxxx"
+openclaw config set channels.feishu.appSecret "your_app_secret"
+openclaw config set channels.feishu.enabled true
 ```
 
 ### Configuration Options
@@ -97,6 +97,139 @@ channels:
     renderMode: "auto"
 ```
 
+#### Complete Configuration Example
+
+```yaml
+channels:
+  feishu:
+    # Enable/disable the channel
+    enabled: true
+
+    # Feishu App credentials
+    appId: "cli_xxxxxxxxxxxxxxxx"
+    appSecret: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+    # Domain: "feishu" (China) or "lark" (International)
+    domain: "feishu"
+
+    # Connection mode: "websocket" (recommended) or "webhook"
+    connectionMode: "websocket"
+
+    # Webhook configuration (only for webhook mode)
+    webhookPath: "/feishu/events"
+    webhookPort: 3000
+
+    # Encryption settings (optional, for webhook mode)
+    encryptKey: "your_encrypt_key"
+    verificationToken: "your_verification_token"
+
+    # Direct message policy
+    dmPolicy: "pairing"  # "pairing" | "open" | "allowlist"
+    allowFrom: ["*"]  # For "open" policy, must include "*"
+
+    # Group chat policy
+    groupPolicy: "allowlist"  # "open" | "allowlist" | "disabled"
+    groupAllowFrom: ["oc_xxxxxxxxxxxxxxxx", "user_id"]
+    requireMention: true  # Require @mention in groups
+
+    # Media settings
+    mediaMaxMb: 30  # Max media file size in MB
+
+    # Render mode for bot replies
+    renderMode: "auto"  # "auto" | "raw" | "card"
+
+    # Enable streaming updates for partial replies
+    streaming: true  # true or false (default: true)
+
+    # Markdown settings
+    markdown:
+      mode: "native"  # "native" | "escape" | "strip"
+      tableMode: "native"  # "native" | "ascii" | "simple"
+
+    # Message history limits
+    historyLimit: 100  # Max messages to fetch for group chats
+    dmHistoryLimit: 50  # Max messages to fetch for DMs
+
+    # Text chunk settings for long messages
+    textChunkLimit: 2000  # Max characters per chunk
+    chunkMode: "length"  # "length" | "newline"
+
+    # Streaming coalesce settings
+    blockStreamingCoalesce:
+      enabled: true
+      minDelayMs: 100
+      maxDelayMs: 500
+
+    # Heartbeat visibility settings
+    heartbeat:
+      visibility: "hidden"  # "visible" | "hidden"
+      intervalMs: 300000  # 5 minutes
+
+    # Per-group configuration (overrides global settings)
+    groups:
+      "oc_group_id_1":
+        enabled: true
+        requireMention: false
+        systemPrompt: "You are a helpful assistant"
+        skills: ["web_search", "file_analysis"]
+        tools:
+          allow: ["*"]
+        allowFrom: ["user_id_1", "user_id_2"]
+
+    # Per-DM configuration
+    dms:
+      "user_id_1":
+        enabled: true
+        systemPrompt: "You are a personal assistant"
+
+    # Capabilities (optional)
+    capabilities: ["send", "receive", "media"]
+```
+
+#### Configuration Reference
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | boolean | - | Enable/disable the channel |
+| `appId` | string | - | Feishu App ID |
+| `appSecret` | string | - | Feishu App Secret |
+| `domain` | enum | `"feishu"` | `"feishu"` (China) or `"lark"` (International) |
+| `connectionMode` | enum | `"websocket"` | `"websocket"` or `"webhook"` |
+| `webhookPath` | string | `"/feishu/events"` | Webhook endpoint path (webhook mode) |
+| `webhookPort` | number | - | Webhook server port (webhook mode) |
+| `encryptKey` | string | - | Encryption key (webhook mode, optional) |
+| `verificationToken` | string | - | Verification token (webhook mode, optional) |
+| `dmPolicy` | enum | `"pairing"` | `"pairing"` | `"open"` | `"allowlist"` |
+| `allowFrom` | array | - | Allowed users for DM (for "open" policy, must include `"*"`) |
+| `groupPolicy` | enum | `"allowlist"` | `"open"` | `"allowlist"` | `"disabled"` |
+| `groupAllowFrom` | array | - | Allowed group IDs (for "allowlist" policy) |
+| `requireMention` | boolean | `true` | Require @mention in groups |
+| `mediaMaxMb` | number | `30` | Max media file size in MB |
+| `renderMode` | enum | `"auto"` | `"auto"` | `"raw"` | `"card"` |
+| `streaming` | boolean | `true` | Enable streaming updates for partial replies |
+| `historyLimit` | number | - | Max messages to fetch for group chats |
+| `dmHistoryLimit` | number | - | Max messages to fetch for DMs |
+| `textChunkLimit` | number | - | Max characters per message chunk |
+| `chunkMode` | enum | - | `"length"` or `"newline"` |
+| `markdown.mode` | enum | - | `"native"` | `"escape"` | `"strip"` |
+| `markdown.tableMode` | enum | - | `"native"` | `"ascii"` | `"simple"` |
+
+#### DM Policies
+
+| Policy | Description |
+|--------|-------------|
+| `pairing` | Users must send `/pair` command to initiate DM with the bot |
+| `open` | Anyone can DM the bot (requires `allowFrom: ["*"]`) |
+| `allowlist` | Only users in `allowFrom` list can DM the bot |
+
+#### Group Policies
+
+| Policy | Description |
+|--------|-------------|
+| `open` | Bot responds to all groups where it's added |
+| `allowlist` | Bot only responds to groups in `groupAllowFrom` list |
+| `disabled` | Bot doesn't respond to group messages |
+
 #### Render Mode
 
 | Mode | Description |
@@ -104,6 +237,44 @@ channels:
 | `auto` | (Default) Automatically detect: use card for messages with code blocks or tables, plain text otherwise. |
 | `raw` | Always send replies as plain text. Markdown tables are converted to ASCII. |
 | `card` | Always send replies as interactive cards with full markdown rendering (syntax highlighting, tables, clickable links). |
+
+#### Markdown Support
+
+Feishu cards support a comprehensive set of Markdown syntax. The plugin automatically normalizes markdown content to ensure compatibility with Feishu's renderer.
+
+**Supported Markdown Elements:**
+
+| Element | Syntax | Example |
+|---------|--------|---------|
+| Headers | `#`, `##`, `###` | `# Heading 1` |
+| Bold | `**text**` | `**bold text**` |
+| Italic | `*text*` | `*italic text*` |
+| Strikethrough | `~~text~~` | `~~strikethrough~~` |
+| Inline Code | `` `code` `` | `` `inline code` `` |
+| Code Blocks | ```language ... ``` | ```javascript ... ``` |
+| Unordered Lists | `- item` | `- Item 1` |
+| Ordered Lists | `1. item` | `1. First item` |
+| Links | `[text](url)` | `[OpenClaw](https://github.com/openclaw/openclaw)` |
+| Images | `![alt](url)` | `![logo](https://example.com/logo.png)` |
+| Blockquotes | `> text` | `> This is a quote` |
+| Horizontal Rules | `---` | `---` |
+| Tables | `| col1 | col2 |` | `| Name | Age |` |
+
+**Code Block Languages:**
+
+Feishu supports syntax highlighting for 70+ programming languages including:
+- JavaScript/TypeScript
+- Python
+- Java
+- Go
+- Rust
+- C/C++
+- Shell/Bash
+- And many more...
+
+**Automatic Detection:**
+
+When `renderMode` is set to `"auto"`, the plugin automatically detects if your message contains markdown elements and uses card rendering. This ensures the best visual presentation while keeping simple messages as plain text.
 
 ### Features
 
@@ -137,18 +308,18 @@ Send `/new` command in the chat.
 
 #### Why is the output not streaming
 
-Feishu API has rate limits. Streaming updates can easily trigger throttling. We use complete-then-send approach for stability.
+Feishu API has rate limits. We use Feishu's native streaming configuration (`streaming_config`) to handle updates on the client side, which provides a smooth streaming experience while respecting rate limits.
 
 #### Windows install error `spawn npm ENOENT`
 
-If `clawdbot plugins install` fails, install manually:
+If `openclaw plugins install` fails, install manually:
 
 ```bash
 # 1. Download the package
-curl -O https://registry.npmjs.org/@m1heng-clawd/feishu/-/feishu-0.1.1.tgz
+curl -O https://registry.npmjs.org/@mahmut-abi/feishu/-/feishu-0.1.4.tgz
 
 # 2. Install from local file
-clawdbot plugins install ./feishu-0.1.1.tgz
+openclaw plugins install ./feishu-0.1.4.tgz
 ```
 
 #### Cannot find the bot in Feishu
@@ -164,13 +335,13 @@ clawdbot plugins install ./feishu-0.1.1.tgz
 ### 安装
 
 ```bash
-clawdbot plugins install @m1heng-clawd/feishu
+openclaw plugins install @mahmut-abi/feishu
 ```
 
 或通过 npm 安装：
 
 ```bash
-npm install @m1heng-clawd/feishu
+npm install @mahmut-abi/feishu
 ```
 
 ### 配置
@@ -221,9 +392,9 @@ npm install @m1heng-clawd/feishu
 3. 确保事件订阅的权限已申请并通过审核
 
 ```bash
-clawdbot config set channels.feishu.appId "cli_xxxxx"
-clawdbot config set channels.feishu.appSecret "your_app_secret"
-clawdbot config set channels.feishu.enabled true
+openclaw config set channels.feishu.appId "cli_xxxxx"
+openclaw config set channels.feishu.appSecret "your_app_secret"
+openclaw config set channels.feishu.enabled true
 ```
 
 ### 配置选项
@@ -250,6 +421,139 @@ channels:
     renderMode: "auto"
 ```
 
+#### 完整配置示例
+
+```yaml
+channels:
+  feishu:
+    # 启用/禁用频道
+    enabled: true
+
+    # 飞书应用凭证
+    appId: "cli_xxxxxxxxxxxxxxxx"
+    appSecret: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+    # 域名: "feishu" (国内) 或 "lark" (国际)
+    domain: "feishu"
+
+    # 连接模式: "websocket" (推荐) 或 "webhook"
+    connectionMode: "websocket"
+
+    # Webhook 配置（仅用于 webhook 模式）
+    webhookPath: "/feishu/events"
+    webhookPort: 3000
+
+    # 加密设置（可选，用于 webhook 模式）
+    encryptKey: "your_encrypt_key"
+    verificationToken: "your_verification_token"
+
+    # 私聊策略
+    dmPolicy: "pairing"  # "pairing" | "open" | "allowlist"
+    allowFrom: ["*"]  # "open" 策略必须包含 "*"
+
+    # 群聊策略
+    groupPolicy: "allowlist"  # "open" | "allowlist" | "disabled"
+    groupAllowFrom: ["oc_xxxxxxxxxxxxxxxx", "user_id"]
+    requireMention: true  # 群聊是否需要 @机器人
+
+    # 媒体设置
+    mediaMaxMb: 30  # 媒体文件最大大小（MB）
+
+    # 回复渲染模式
+    renderMode: "auto"  # "auto" | "raw" | "card"
+
+    # 启用流式更新
+    streaming: true  # true 或 false（默认：true）
+
+    # Markdown 设置
+    markdown:
+      mode: "native"  # "native" | "escape" | "strip"
+      tableMode: "native"  # "native" | "ascii" | "simple"
+
+    # 消息历史记录限制
+    historyLimit: 100  # 群聊获取的最大消息数
+    dmHistoryLimit: 50  # 私聊获取的最大消息数
+
+    # 文本分块设置（长消息）
+    textChunkLimit: 2000  # 每块最大字符数
+    chunkMode: "length"  # "length" | "newline"
+
+    # 流式更新合并设置
+    blockStreamingCoalesce:
+      enabled: true
+      minDelayMs: 100
+      maxDelayMs: 500
+
+    # 心跳可见性设置
+    heartbeat:
+      visibility: "hidden"  # "visible" | "hidden"
+      intervalMs: 300000  # 5 分钟
+
+    # 每个群组的配置（覆盖全局设置）
+    groups:
+      "oc_group_id_1":
+        enabled: true
+        requireMention: false
+        systemPrompt: "你是一个有用的助手"
+        skills: ["web_search", "file_analysis"]
+        tools:
+          allow: ["*"]
+        allowFrom: ["user_id_1", "user_id_2"]
+
+    # 每个私聊的配置
+    dms:
+      "user_id_1":
+        enabled: true
+        systemPrompt: "你是我的个人助手"
+
+    # 能力（可选）
+    capabilities: ["send", "receive", "media"]
+```
+
+#### 配置参数参考
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `enabled` | boolean | - | 启用/禁用频道 |
+| `appId` | string | - | 飞书应用 ID |
+| `appSecret` | string | - | 飞书应用密钥 |
+| `domain` | enum | `"feishu"` | `"feishu"`（国内）或 `"lark"`（国际） |
+| `connectionMode` | enum | `"websocket"` | `"websocket"` 或 `"webhook"` |
+| `webhookPath` | string | `"/feishu/events"` | Webhook 端点路径（webhook 模式） |
+| `webhookPort` | number | - | Webhook 服务器端口（webhook 模式） |
+| `encryptKey` | string | - | 加密密钥（webhook 模式，可选） |
+| `verificationToken` | string | - | 验证令牌（webhook 模式，可选） |
+| `dmPolicy` | enum | `"pairing"` | `"pairing"` | `"open"` | `"allowlist"` |
+| `allowFrom` | array | - | 允许私聊的用户（"open" 策略必须包含 `"*"`） |
+| `groupPolicy` | enum | `"allowlist"` | `"open"` | `"allowlist"` | `"disabled"` |
+| `groupAllowFrom` | array | - | 允许的群组 ID（"allowlist" 策略） |
+| `requireMention` | boolean | `true` | 群聊是否需要 @机器人 |
+| `mediaMaxMb` | number | `30` | 媒体文件最大大小（MB） |
+| `renderMode` | enum | `"auto"` | `"auto"` | `"raw"` | `"card"` |
+| `streaming` | boolean | `true` | 启用部分回复的流式更新 |
+| `historyLimit` | number | - | 群聊获取的最大消息数 |
+| `dmHistoryLimit` | number | - | 私聊获取的最大消息数 |
+| `textChunkLimit` | number | - | 每条消息块的最大字符数 |
+| `chunkMode` | enum | - | `"length"` 或 `"newline"` |
+| `markdown.mode` | enum | - | `"native"` | `"escape"` | `"strip"` |
+| `markdown.tableMode` | enum | - | `"native"` | `"ascii"` | `"simple"` |
+
+#### 私聊策略
+
+| 策略 | 说明 |
+|------|------|
+| `pairing` | 用户必须发送 `/pair` 命令才能开始与机器人私聊 |
+| `open` | 任何人都可以与机器人私聊（需要 `allowFrom: ["*"]`） |
+| `allowlist` | 只有 `allowFrom` 列表中的用户可以与机器人私聊 |
+
+#### 群聊策略
+
+| 策略 | 说明 |
+|------|------|
+| `open` | 机器人响应所有添加了它的群组 |
+| `allowlist` | 机器人只响应 `groupAllowFrom` 列表中的群组 |
+| `disabled` | 机器人不响应群组消息 |
+
 #### 渲染模式
 
 | 模式 | 说明 |
@@ -257,6 +561,44 @@ channels:
 | `auto` | （默认）自动检测：有代码块或表格时用卡片，否则纯文本 |
 | `raw` | 始终纯文本，表格转为 ASCII |
 | `card` | 始终使用卡片，支持语法高亮、表格、链接等 |
+
+#### Markdown 支持
+
+飞书卡片支持完整的 Markdown 语法。插件会自动规范化 Markdown 内容以确保与飞书渲染器兼容。
+
+**支持的 Markdown 元素：**
+
+| 元素 | 语法 | 示例 |
+|------|------|------|
+| 标题 | `#`, `##`, `###` | `# 一级标题` |
+| 粗体 | `**文本**` | `**粗体文本**` |
+| 斜体 | `*文本*` | `*斜体文本*` |
+| 删除线 | `~~文本~~` | `~~删除线~~` |
+| 行内代码 | `` `代码` `` | `` `行内代码` `` |
+| 代码块 | ```语言 ... ``` | ```javascript ... ``` |
+| 无序列表 | `- 项目` | `- 项目 1` |
+| 有序列表 | `1. 项目` | `1. 第一个项目` |
+| 链接 | `[文本](url)` | `[OpenClaw](https://github.com/openclaw/openclaw)` |
+| 图片 | `![alt](url)` | `![logo](https://example.com/logo.png)` |
+| 引用块 | `> 文本` | `> 这是一段引用` |
+| 分割线 | `---` | `---` |
+| 表格 | `| 列1 | 列2 |` | `| 姓名 | 年龄 |` |
+
+**代码块语言支持：**
+
+飞书支持 70+ 种编程语言的语法高亮，包括：
+- JavaScript/TypeScript
+- Python
+- Java
+- Go
+- Rust
+- C/C++
+- Shell/Bash
+- 以及更多...
+
+**自动检测：**
+
+当 `renderMode` 设置为 `"auto"` 时，插件会自动检测消息是否包含 Markdown 元素，并使用卡片渲染。这确保了最佳视觉效果，同时保持简单消息为纯文本格式。
 
 ### 功能
 
@@ -290,18 +632,18 @@ channels:
 
 #### 消息为什么不是流式输出
 
-飞书 API 有请求频率限制，流式更新消息很容易触发限流。当前采用完整回复后一次性发送的方式，以保证稳定性。
+飞书 API 有请求频率限制。我们使用飞书原生的流式配置（`streaming_config`）在客户端处理更新，在遵守频率限制的同时提供流畅的流式体验。
 
 #### Windows 安装报错 `spawn npm ENOENT`
 
-如果 `clawdbot plugins install` 失败，可以手动安装：
+如果 `openclaw plugins install` 失败，可以手动安装：
 
 ```bash
 # 1. 下载插件包
-curl -O https://registry.npmjs.org/@m1heng-clawd/feishu/-/feishu-0.1.1.tgz
+curl -O https://registry.npmjs.org/@mahmut-abi/feishu/-/feishu-0.1.4.tgz
 
 # 2. 从本地安装
-clawdbot plugins install ./feishu-0.1.1.tgz
+openclaw plugins install ./feishu-0.1.4.tgz
 ```
 
 #### 在飞书里找不到机器人

@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
+import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import type { FeishuConfig } from "./types.js";
 import { createFeishuClient } from "./client.js";
 import { normalizeFeishuTarget } from "./targets.js";
@@ -16,7 +16,7 @@ export type FeishuDirectoryGroup = {
 };
 
 export async function listFeishuDirectoryPeers(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   query?: string;
   limit?: number;
 }): Promise<FeishuDirectoryPeer[]> {
@@ -44,7 +44,7 @@ export async function listFeishuDirectoryPeers(params: {
 }
 
 export async function listFeishuDirectoryGroups(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   query?: string;
   limit?: number;
 }): Promise<FeishuDirectoryGroup[]> {
@@ -71,7 +71,7 @@ export async function listFeishuDirectoryGroups(params: {
 }
 
 export async function listFeishuDirectoryPeersLive(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   query?: string;
   limit?: number;
 }): Promise<FeishuDirectoryPeer[]> {
@@ -115,7 +115,7 @@ export async function listFeishuDirectoryPeersLive(params: {
 }
 
 export async function listFeishuDirectoryGroupsLive(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   query?: string;
   limit?: number;
 }): Promise<FeishuDirectoryGroup[]> {
