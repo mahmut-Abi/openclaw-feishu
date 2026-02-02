@@ -446,6 +446,69 @@ export async function sendImageFeishu(params: {
 }
 
 /**
+ * Send a video message using a file_key
+ * Uses msg_type: "media" for proper video playback support
+ */
+export async function sendVideoFeishu(params: {
+  cfg: OpenClawConfig;
+  to: string;
+  fileKey: string;
+  replyToMessageId?: string;
+}): Promise<SendMediaResult> {
+  const { cfg, to, fileKey, replyToMessageId } = params;
+  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  if (!feishuCfg) {
+    throw new Error("Feishu channel not configured");
+  }
+
+  const client = createFeishuClient(feishuCfg);
+  const receiveId = normalizeFeishuTarget(to);
+  if (!receiveId) {
+    throw new Error(`Invalid Feishu target: ${to}`);
+  }
+
+  const receiveIdType = resolveReceiveIdType(receiveId);
+  const content = JSON.stringify({ file_key: fileKey });
+
+  if (replyToMessageId) {
+    const response = await client.im.message.reply({
+      path: { message_id: replyToMessageId },
+      data: {
+        content,
+        msg_type: "media",
+      },
+    });
+
+    if (response.code !== 0) {
+      throw new Error(`Feishu video reply failed: ${response.msg || `code ${response.code}`}`);
+    }
+
+    return {
+      messageId: response.data?.message_id ?? "unknown",
+      chatId: receiveId,
+    };
+  }
+
+  const response = await client.im.message.create({
+    params: { receive_id_type: receiveIdType },
+    data: {
+      receive_id: receiveId,
+      content,
+      msg_type: "media",
+    },
+  });
+
+  if (response.code !== 0) {
+    throw new Error(`Feishu video send failed: ${response.msg || `code ${response.code}`}`);
+  }
+
+  return {
+    messageId: response.data?.message_id ?? "unknown",
+    chatId: receiveId,
+  };
+}
+
+/**
  * Send a file message using a file_key
  */
 export async function sendFileFeishu(params: {
@@ -602,17 +665,34 @@ export async function sendMediaFeishu(params: {
   // Determine if it's an image based on extension
   const ext = path.extname(name).toLowerCase();
   const isImage = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".ico", ".tiff"].includes(ext);
+  const isVideo = [".mp4", ".mov", ".avi", ".mkv", ".webm"].includes(ext);
 
   if (isImage) {
     const { imageKey } = await uploadImageFeishu({ cfg, image: filePath });
     return sendImageFeishu({ cfg, to, imageKey, replyToMessageId });
+  } else if (isVideo) {
+    const fileType = "mp4"; // Video files use "mp4" type in Feishu API
+
+    // Detect duration for video files
+    let duration: number | undefined;
+    const bufferToCheck = typeof filePath === "string" ? fs.readFileSync(filePath) : filePath;
+    duration = await detectMediaDuration(bufferToCheck, name);
+
+    const { fileKey } = await uploadFileFeishu({
+      cfg,
+      file: filePath,
+      fileName: name,
+      fileType,
+      duration,
+    });
+    return sendVideoFeishu({ cfg, to, fileKey, replyToMessageId });
   } else {
     const fileType = detectFileType(name);
 
-    // Detect duration for audio/video files
-    const audioVideoTypes = ["opus", "mp4"];
+    // Detect duration for audio files
+    const audioTypes = ["opus"];
     let duration: number | undefined;
-    if (audioVideoTypes.includes(fileType)) {
+    if (audioTypes.includes(fileType)) {
       // If filePath is a string (file path), read the buffer to detect duration
       // If it's already a Buffer, use it directly
       const bufferToCheck = typeof filePath === "string" ? fs.readFileSync(filePath) : filePath;
