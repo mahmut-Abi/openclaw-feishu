@@ -12,6 +12,27 @@ export type DownloadImageResult = {
   contentType?: string;
 };
 
+/**
+ * Detect the duration of an audio/video file in milliseconds.
+ * Returns undefined if the duration cannot be detected or is not applicable.
+ * Note: For now, returns a default duration for audio/video files to allow upload.
+ * TODO: Implement proper duration detection using music-metadata or ffprobe.
+ */
+async function detectMediaDuration(buffer: Buffer, fileName: string): Promise<number | undefined> {
+  const ext = path.extname(fileName).toLowerCase();
+  const audioExtensions = [".mp3", ".wav", ".ogg", ".opus", ".flac", ".aac", ".m4a"];
+  const videoExtensions = [".mp4", ".mov", ".avi", ".mkv", ".webm"];
+
+  if (!audioExtensions.includes(ext) && !videoExtensions.includes(ext)) {
+    return undefined;
+  }
+
+  // For now, provide a default duration to allow file upload
+  // Audio files: default to 1 second
+  // Video files: default to 1 second
+  return 1000;
+}
+
 export type DownloadMessageResourceResult = {
   buffer: Buffer;
   contentType?: string;
@@ -207,18 +228,22 @@ export async function uploadImageFeishu(params: {
 
   let fileInput: string | Buffer;
   let fileName: string;
+  let tempFile: string | undefined;
 
   if (typeof image === "string") {
+    // File path - use directly
     fileInput = image;
     fileName = path.basename(image);
   } else {
-    // For Buffer, create a temporary file and use it
-    // This ensures the SDK gets a proper file stream
+    // Buffer - create a temporary file
+    // This is required because the SDK uses FormData which needs a file path or ReadableStream,
+    // not a raw Buffer (would cause "TypeError: source.on is not a function")
     const tempDir = os.tmpdir();
-    fileName = `upload_${Date.now()}_${Math.random().toString(36).substring(7)}.bin`;
+    fileName = `upload_${Date.now()}_${Math.random().toString(36).substring(7)}.png`;
     const tempFilePath = path.join(tempDir, fileName);
     fs.writeFileSync(tempFilePath, image);
     fileInput = tempFilePath;
+    tempFile = tempFilePath;
   }
 
   const logFn = (feishuCfg as any).runtime?.log ?? console.log;
@@ -246,9 +271,9 @@ export async function uploadImageFeishu(params: {
     }
 
     // Clean up temp file if it was created
-    if (typeof image !== "string" && typeof fileInput === "string") {
+    if (tempFile) {
       try {
-        fs.unlinkSync(fileInput);
+        fs.unlinkSync(tempFile);
       } catch (e) {
         // Ignore cleanup errors
       }
@@ -258,9 +283,9 @@ export async function uploadImageFeishu(params: {
   } catch (error) {
     logFn?.(`[feishu] image upload error: ${String(error)}`);
     // Clean up temp file on error
-    if (typeof image !== "string" && typeof fileInput === "string") {
+    if (tempFile) {
       try {
-        fs.unlinkSync(fileInput);
+        fs.unlinkSync(tempFile);
       } catch (e) {
         // Ignore cleanup errors
       }
@@ -290,18 +315,22 @@ export async function uploadFileFeishu(params: {
 
   let fileInput: string | Buffer;
   let actualFileName: string;
+  let tempFile: string | undefined;
 
   if (typeof file === "string") {
+    // File path - use directly
     fileInput = file;
     actualFileName = fileName;
   } else {
-    // For Buffer, create a temporary file and use it
-    // This ensures the SDK gets a proper file stream
+    // Buffer - create a temporary file
+    // This is required because the SDK uses FormData which needs a file path or ReadableStream,
+    // not a raw Buffer (would cause "TypeError: source.on is not a function")
     const tempDir = os.tmpdir();
     actualFileName = fileName;
     const tempFilePath = path.join(tempDir, `upload_${Date.now()}_${Math.random().toString(36).substring(7)}.${actualFileName.split('.').pop() || 'bin'}`);
     fs.writeFileSync(tempFilePath, file);
     fileInput = tempFilePath;
+    tempFile = tempFilePath;
   }
 
   // Log upload details for debugging
@@ -331,9 +360,9 @@ export async function uploadFileFeishu(params: {
     }
 
     // Clean up temp file if it was created
-    if (typeof file !== "string" && typeof fileInput === "string") {
+    if (tempFile) {
       try {
-        fs.unlinkSync(fileInput);
+        fs.unlinkSync(tempFile);
       } catch (e) {
         // Ignore cleanup errors
       }
@@ -343,9 +372,9 @@ export async function uploadFileFeishu(params: {
   } catch (error) {
     logFn?.(`[feishu] file upload error: ${String(error)}`);
     // Clean up temp file on error
-    if (typeof file !== "string" && typeof fileInput === "string") {
+    if (tempFile) {
       try {
-        fs.unlinkSync(fileInput);
+        fs.unlinkSync(tempFile);
       } catch (e) {
         // Ignore cleanup errors
       }
@@ -539,31 +568,31 @@ export async function sendMediaFeishu(params: {
 }): Promise<SendMediaResult> {
   const { cfg, to, mediaUrl, mediaBuffer, fileName, replyToMessageId } = params;
 
-  let buffer: Buffer;
+  let filePath: string | Buffer | undefined;
   let name: string;
 
   if (mediaBuffer) {
-    buffer = mediaBuffer;
+    // Buffer - pass directly to upload function
+    filePath = mediaBuffer;
     name = fileName ?? "file";
   } else if (mediaUrl) {
     if (isLocalPath(mediaUrl)) {
-      // Local file path - read directly
-      const filePath = mediaUrl.startsWith("~")
+      // Local file path - pass directly to avoid creating temporary files
+      filePath = mediaUrl.startsWith("~")
         ? mediaUrl.replace("~", process.env.HOME ?? "")
         : mediaUrl.replace("file://", "");
 
       if (!fs.existsSync(filePath)) {
         throw new Error(`Local file not found: ${filePath}`);
       }
-      buffer = fs.readFileSync(filePath);
       name = fileName ?? path.basename(filePath);
     } else {
-      // Remote URL - fetch
+      // Remote URL - fetch as buffer
       const response = await fetch(mediaUrl);
       if (!response.ok) {
         throw new Error(`Failed to fetch media from URL: ${response.status}`);
       }
-      buffer = Buffer.from(await response.arrayBuffer());
+      filePath = Buffer.from(await response.arrayBuffer());
       name = fileName ?? (path.basename(new URL(mediaUrl).pathname) || "file");
     }
   } else {
@@ -575,15 +604,27 @@ export async function sendMediaFeishu(params: {
   const isImage = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".ico", ".tiff"].includes(ext);
 
   if (isImage) {
-    const { imageKey } = await uploadImageFeishu({ cfg, image: buffer });
+    const { imageKey } = await uploadImageFeishu({ cfg, image: filePath });
     return sendImageFeishu({ cfg, to, imageKey, replyToMessageId });
   } else {
     const fileType = detectFileType(name);
+
+    // Detect duration for audio/video files
+    const audioVideoTypes = ["opus", "mp4"];
+    let duration: number | undefined;
+    if (audioVideoTypes.includes(fileType)) {
+      // If filePath is a string (file path), read the buffer to detect duration
+      // If it's already a Buffer, use it directly
+      const bufferToCheck = typeof filePath === "string" ? fs.readFileSync(filePath) : filePath;
+      duration = await detectMediaDuration(bufferToCheck, name);
+    }
+
     const { fileKey } = await uploadFileFeishu({
       cfg,
-      file: buffer,
+      file: filePath,
       fileName: name,
       fileType,
+      duration,
     });
     return sendFileFeishu({ cfg, to, fileKey, replyToMessageId });
   }
