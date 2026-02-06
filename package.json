@@ -1,5 +1,5 @@
 {
-  "name": "@mahmut-abi/feishu",
+  "name": "@mahmut-abi/feishu-unofficial",
   "version": "0.1.20",
   "type": "module",
   "description": "OpenClaw Feishu/Lark channel plugin",
@@ -11,11 +11,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mahmut-Abi/openclaw-feishu.git"
+    "url": "git+https://github.com/mahmut-Abi/feishu-unofficial.git"
   },
-  "homepage": "https://github.com/mahmut-Abi/openclaw-feishu#readme",
+  "homepage": "https://github.com/mahmut-Abi/feishu-unofficial#readme",
   "bugs": {
-    "url": "https://github.com/mahmut-Abi/openclaw-feishu/issues"
+    "url": "https://github.com/mahmut-Abi/feishu-unofficial/issues"
   },
   "keywords": [
     "openclaw",
@@ -43,7 +43,7 @@
       "order": 70
     },
     "install": {
-      "npmSpec": "@mahmut-abi/feishu",
+      "npmSpec": "@mahmut-abi/feishu-unofficial",
       "localPath": ".",
       "defaultChoice": "npm"
     }

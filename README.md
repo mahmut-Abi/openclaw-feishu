@@ -11,13 +11,13 @@ Feishu/Lark (飞书) channel plugin for [OpenClaw](https://github.com/openclaw/o
 ### Installation
 
 ```bash
-openclaw plugins install @mahmut-abi/feishu
+openclaw plugins install @mahmut-abi/feishu-unofficial
 ```
 
 Or install via npm:
 
 ```bash
-npm install @mahmut-abi/feishu
+npm install @mahmut-abi/feishu-unofficial
 ```
 
 ### Configuration
@@ -316,10 +316,10 @@ If `openclaw plugins install` fails, install manually:
 
 ```bash
 # 1. Download the package
-curl -O https://registry.npmjs.org/@mahmut-abi/feishu/-/feishu-0.1.4.tgz
+curl -O https://registry.npmjs.org/@mahmut-abi/feishu-unofficial/-/feishu-unofficial-0.1.4.tgz
 
 # 2. Install from local file
-openclaw plugins install ./feishu-0.1.4.tgz
+openclaw plugins install ./feishu-unofficial-0.1.4.tgz
 ```
 
 #### Cannot find the bot in Feishu
@@ -335,13 +335,13 @@ openclaw plugins install ./feishu-0.1.4.tgz
 ### 安装
 
 ```bash
-openclaw plugins install @mahmut-abi/feishu
+openclaw plugins install @mahmut-abi/feishu-unofficial
 ```
 
 或通过 npm 安装：
 
 ```bash
-npm install @mahmut-abi/feishu
+npm install @mahmut-abi/feishu-unofficial
 ```
 
 ### 配置
@@ -640,10 +640,10 @@ channels:
 
 ```bash
 # 1. 下载插件包
-curl -O https://registry.npmjs.org/@mahmut-abi/feishu/-/feishu-0.1.4.tgz
+curl -O https://registry.npmjs.org/@mahmut-abi/feishu-unofficial/-/feishu-unofficial-0.1.4.tgz
 
 # 2. 从本地安装
-openclaw plugins install ./feishu-0.1.4.tgz
+openclaw plugins install ./feishu-unofficial-0.1.4.tgz
 ```
 
 #### 在飞书里找不到机器人

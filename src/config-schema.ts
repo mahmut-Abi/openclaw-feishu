@@ -54,10 +54,10 @@ export const FeishuGroupSchema = z
   .object({
     requireMention: z.boolean().optional(),
     tools: ToolPolicySchema,
-    skills: z.array(z.string()).optional(),
-    enabled: z.boolean().optional(),
+    skills: z.array(z.string()).optional(), // Reserved for future per-group skill configuration
+    enabled: z.boolean().optional(), // Reserved for future per-group enable/disable
     allowFrom: z.array(z.union([z.string(), z.number()])).optional(),
-    systemPrompt: z.string().optional(),
+    systemPrompt: z.string().optional(), // Reserved for future per-group system prompt override
   })
   .strict();
 
@@ -70,11 +70,11 @@ export const FeishuConfigSchema = z
     verificationToken: z.string().optional(),
     domain: FeishuDomainSchema.optional().default("feishu"),
     connectionMode: FeishuConnectionModeSchema.optional().default("websocket"),
-    webhookPath: z.string().optional().default("/feishu/events"),
+    webhookPath: z.string().optional().default("/feishu/events"), // Reserved for future webhook mode implementation
     webhookPort: z.number().int().positive().optional(),
-    capabilities: z.array(z.string()).optional(),
-    markdown: MarkdownConfigSchema,
-    configWrites: z.boolean().optional(),
+    capabilities: z.array(z.string()).optional(), // Reserved for future capability negotiation
+    markdown: MarkdownConfigSchema, // Reserved for future markdown processing options
+    configWrites: z.boolean().optional(), // Reserved for future config modification support
     dmPolicy: DmPolicySchema.optional().default("pairing"),
     allowFrom: z.array(z.union([z.string(), z.number()])).optional(),
     groupPolicy: GroupPolicySchema.optional().default("allowlist"),
@@ -84,11 +84,11 @@ export const FeishuConfigSchema = z
     historyLimit: z.number().int().min(0).optional(),
     dmHistoryLimit: z.number().int().min(0).optional(),
     dms: z.record(z.string(), DmConfigSchema).optional(),
-    textChunkLimit: z.number().int().positive().optional(),
-    chunkMode: z.enum(["length", "newline"]).optional(),
+    textChunkLimit: z.number().int().positive().optional(), // Reserved for future text chunking customization
+    chunkMode: z.enum(["length", "newline"]).optional(), // Reserved for future chunk mode selection
     blockStreamingCoalesce: BlockStreamingCoalesceSchema,
     mediaMaxMb: z.number().positive().optional(),
-    heartbeat: ChannelHeartbeatVisibilitySchema,
+    heartbeat: ChannelHeartbeatVisibilitySchema, // Reserved for future heartbeat visibility control
     renderMode: RenderModeSchema, // raw = plain text (default), card = interactive card with markdown
     streaming: z.boolean().optional().default(true), // Enable streaming updates for partial replies
   })

@@ -444,10 +444,17 @@ export async function handleFeishuMessage(params: {
 
   log(`feishu: received message from ${ctx.senderOpenId} in ${ctx.chatId} (${ctx.chatType})`);
 
-  const historyLimit = Math.max(
+  // Use separate history limits for groups and DMs
+  const groupHistoryLimit = Math.max(
     0,
     feishuCfg?.historyLimit ?? cfg.messages?.groupChat?.historyLimit ?? DEFAULT_GROUP_HISTORY_LIMIT,
   );
+  const dmHistoryLimit = Math.max(
+    0,
+    feishuCfg?.dmHistoryLimit ?? cfg.messages?.directChat?.historyLimit ?? DEFAULT_GROUP_HISTORY_LIMIT,
+  );
+  // For compatibility, use groupHistoryLimit as the default history limit
+  const historyLimit = isGroup ? groupHistoryLimit : dmHistoryLimit;
 
   if (isGroup) {
     const groupPolicy = feishuCfg?.groupPolicy ?? "open";

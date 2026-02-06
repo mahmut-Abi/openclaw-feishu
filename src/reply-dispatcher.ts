@@ -37,7 +37,9 @@ class FeishuStream {
   private initializationPromise: Promise<void> | null = null;
   private loggedInitialization = false;
   private hasInitializationError = false;
-  private currentMinInterval = MIN_UPDATE_INTERVAL_MS;
+  private currentMinInterval: number;
+  private maxUpdateInterval: number;
+  private rateLimitBackoffMultiplier: number;
   private rateLimitHitCount = 0;
   private sequence = 0; // Card update sequence (must be strictly increasing)
 
@@ -48,7 +50,14 @@ class FeishuStream {
       replyToMessageId?: string;
       runtime: RuntimeEnv;
     },
-  ) { }
+    minUpdateIntervalMs: number = MIN_UPDATE_INTERVAL_MS,
+    maxUpdateIntervalMs: number = 5000,
+    rateLimitBackoffMult: number = 2,
+  ) {
+    this.currentMinInterval = minUpdateIntervalMs;
+    this.maxUpdateInterval = maxUpdateIntervalMs;
+    this.rateLimitBackoffMultiplier = rateLimitBackoffMult;
+  }
 
   private getNextSequence(): number {
     return ++this.sequence;
@@ -142,7 +151,8 @@ class FeishuStream {
       this.lastUpdateTime = Date.now();
 
       // Reset interval if update succeeds
-      if (this.currentMinInterval > MIN_UPDATE_INTERVAL_MS) {
+      if (this.currentMinInterval > this.currentMinInterval - (this.currentMinInterval - MIN_UPDATE_INTERVAL_MS)) {
+        // Reset to initial min interval
         this.currentMinInterval = MIN_UPDATE_INTERVAL_MS;
         this.rateLimitHitCount = 0;
       }
@@ -159,8 +169,8 @@ class FeishuStream {
         this.rateLimitHitCount++;
         // Exponentially increase the minimum interval
         this.currentMinInterval = Math.min(
-          MIN_UPDATE_INTERVAL_MS * Math.pow(RATE_LIMIT_BACKOFF_MULTIPLIER, this.rateLimitHitCount),
-          5000 // Cap at 5 seconds
+          this.currentMinInterval * this.rateLimitBackoffMultiplier,
+          this.maxUpdateInterval
         );
       }
 
@@ -279,8 +289,15 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
   const streamingEnabled = feishuCfg?.streaming ?? true;
   const renderMode = feishuCfg?.renderMode ?? "auto";
 
-  console.log(`[feishu] dispatcher initialized: streamingEnabled=${streamingEnabled}, renderMode=${renderMode}`);
-  params.runtime.log?.(`[feishu] dispatcher initialized: streamingEnabled=${streamingEnabled}, renderMode=${renderMode}`);
+  // Read blockStreamingCoalesce config
+  const streamingCoalesce = feishuCfg?.blockStreamingCoalesce;
+  const minUpdateIntervalMs = streamingCoalesce?.minDelayMs ?? 300;
+  const maxUpdateIntervalMs = streamingCoalesce?.maxDelayMs ?? 5000;
+  // Calculate backoff multiplier based on min/max interval (e.g., 300ms -> 5000ms over ~4 hits = 2x multiplier)
+  const rateLimitBackoffMultiplier = Math.pow(maxUpdateIntervalMs / minUpdateIntervalMs, 1 / 4);
+
+  console.log(`[feishu] dispatcher initialized: streamingEnabled=${streamingEnabled}, renderMode=${renderMode}, minUpdateIntervalMs=${minUpdateIntervalMs}, maxUpdateIntervalMs=${maxUpdateIntervalMs}`);
+  params.runtime.log?.(`[feishu] dispatcher initialized: streamingEnabled=${streamingEnabled}, renderMode=${renderMode}, minUpdateIntervalMs=${minUpdateIntervalMs}, maxUpdateIntervalMs=${maxUpdateIntervalMs}`);
 
   const prefixContext = createReplyPrefixContext({
     cfg,
@@ -438,6 +455,9 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
               chatId,
               replyToMessageId,
               runtime: params.runtime,
+              minUpdateIntervalMs,
+              maxUpdateIntervalMs,
+              rateLimitBackoffMult: rateLimitBackoffMultiplier,
             });
             // Stop specific typing indicator if we start streaming text
             // (though typingCallbacks.onIdle will be called eventually)
