@@ -31,7 +31,7 @@
       "./index.ts"
     ],
     "channel": {
-      "id": "feishu",
+      "id": "feishu-unofficial",
       "label": "Feishu",
       "selectionLabel": "Feishu/Lark (飞书)",
       "docsPath": "/channels/feishu",
