@@ -427,7 +427,7 @@ export async function handleFeishuMessage(params: {
   chatHistories?: Map<string, HistoryEntry[]>;
 }): Promise<void> {
   const { cfg, event, botOpenId, runtime, chatHistories } = params;
-  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  const feishuCfg = cfg.channels?.["feishu-unofficial"] as FeishuConfig | undefined;
   const log = runtime?.log ?? console.log;
   const error = runtime?.error ?? console.error;
 

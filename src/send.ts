@@ -24,7 +24,7 @@ export async function getMessageFeishu(params: {
   messageId: string;
 }): Promise<FeishuMessageInfo | null> {
   const { cfg, messageId } = params;
-  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  const feishuCfg = cfg.channels?.["feishu-unofficial"] as FeishuConfig | undefined;
   if (!feishuCfg) {
     throw new Error("Feishu channel not configured");
   }
@@ -96,7 +96,7 @@ export type SendFeishuMessageParams = {
 
 export async function sendMessageFeishu(params: SendFeishuMessageParams): Promise<FeishuSendResult> {
   const { cfg, to, text, replyToMessageId } = params;
-  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  const feishuCfg = cfg.channels?.["feishu-unofficial"] as FeishuConfig | undefined;
   if (!feishuCfg) {
     throw new Error("Feishu channel not configured");
   }
@@ -174,7 +174,7 @@ export type SendFeishuCardParams = {
 
 export async function sendCardFeishu(params: SendFeishuCardParams): Promise<FeishuSendResult> {
   const { cfg, to, card, replyToMessageId } = params;
-  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  const feishuCfg = cfg.channels?.["feishu-unofficial"] as FeishuConfig | undefined;
   if (!feishuCfg) {
     throw new Error("Feishu channel not configured");
   }
@@ -241,7 +241,7 @@ export async function updateCardFeishu(params: {
   card: Record<string, unknown>;
 }): Promise<void> {
   const { cfg, messageId, card } = params;
-  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  const feishuCfg = cfg.channels?.["feishu-unofficial"] as FeishuConfig | undefined;
   if (!feishuCfg) {
     throw new Error("Feishu channel not configured");
   }
@@ -411,7 +411,7 @@ export async function editMessageFeishu(params: {
   text: string;
 }): Promise<void> {
   const { cfg, messageId, text } = params;
-  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  const feishuCfg = cfg.channels?.["feishu-unofficial"] as FeishuConfig | undefined;
   if (!feishuCfg) {
     throw new Error("Feishu channel not configured");
   }
@@ -453,7 +453,7 @@ export async function createCardEntity(params: {
   streaming?: boolean;
 }): Promise<string> {
   const { cfg, content, streaming = false } = params;
-  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  const feishuCfg = cfg.channels?.["feishu-unofficial"] as FeishuConfig | undefined;
   if (!feishuCfg) {
     throw new Error("Feishu channel not configured");
   }
@@ -536,7 +536,7 @@ export async function updateCardContent(params: {
   streaming?: boolean;
 }): Promise<void> {
   const { cfg, cardId, content, sequence, streaming = false } = params;
-  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  const feishuCfg = cfg.channels?.["feishu-unofficial"] as FeishuConfig | undefined;
   if (!feishuCfg) {
     throw new Error("Feishu channel not configured");
   }
@@ -622,7 +622,7 @@ export async function updateCardSettings(params: {
   streamingMode: boolean;
 }): Promise<void> {
   const { cfg, cardId, streamingMode } = params;
-  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  const feishuCfg = cfg.channels?.["feishu-unofficial"] as FeishuConfig | undefined;
   if (!feishuCfg) {
     throw new Error("Feishu channel not configured");
   }
@@ -674,7 +674,7 @@ export async function sendCardMessage(params: {
   replyToMessageId?: string;
 }): Promise<FeishuSendResult> {
   const { cfg, to, cardId, replyToMessageId } = params;
-  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  const feishuCfg = cfg.channels?.["feishu-unofficial"] as FeishuConfig | undefined;
   if (!feishuCfg) {
     throw new Error("Feishu channel not configured");
   }

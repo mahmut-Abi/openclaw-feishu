@@ -25,7 +25,7 @@ export function resolveFeishuAccount(params: {
   cfg: OpenClawConfig;
   accountId?: string | null;
 }): ResolvedFeishuAccount {
-  const feishuCfg = params.cfg.channels?.feishu as FeishuConfig | undefined;
+  const feishuCfg = params.cfg.channels?.["feishu-unofficial"] as FeishuConfig | undefined;
   const enabled = feishuCfg?.enabled !== false;
   const creds = resolveFeishuCredentials(feishuCfg);
 

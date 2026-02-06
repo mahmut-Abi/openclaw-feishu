@@ -285,7 +285,7 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
   const { cfg, agentId, chatId, replyToMessageId } = params;
 
   // Log streaming configuration for debugging
-  const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+  const feishuCfg = cfg.channels?.["feishu-unofficial"] as FeishuConfig | undefined;
   const streamingEnabled = feishuCfg?.streaming ?? true;
   const renderMode = feishuCfg?.renderMode ?? "auto";
 
@@ -315,7 +315,7 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
   const sendFallbackMessage = async (text: string): Promise<void> => {
     params.runtime.log?.(`[feishu] sendFallbackMessage called: textLength=${text.length} chatId=${chatId} replyToMessageId=${replyToMessageId}`);
 
-    const feishuCfg = cfg.channels?.feishu as FeishuConfig | undefined;
+    const feishuCfg = cfg.channels?.["feishu-unofficial"] as FeishuConfig | undefined;
     const renderMode = feishuCfg?.renderMode ?? "auto";
 
     // Determine if we should use card for this message

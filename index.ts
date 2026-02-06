@@ -32,7 +32,7 @@ export { feishuPlugin } from "./src/channel.js";
 export { feishuOutbound } from "./src/outbound.js";
 
 const plugin = {
-  id: "feishu",
+  id: "feishu-unofficial",
   name: "Feishu",
   description: "Feishu/Lark channel plugin",
   configSchema: emptyPluginConfigSchema(),

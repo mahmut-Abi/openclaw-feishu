@@ -9,7 +9,7 @@ export const feishuOutbound: ChannelOutboundAdapter = {
   chunkerMode: "markdown",
   textChunkLimit: 4000,
   sendText: async ({ cfg, to, text }) => {
-    const feishuCfg = cfg.channels?.feishu as Record<string, unknown> | undefined;
+    const feishuCfg = cfg.channels?.["feishu-unofficial"] as Record<string, unknown> | undefined;
     const renderMode = feishuCfg?.renderMode ?? "auto";
 
     // Use markdown card if renderMode is "card", otherwise use plain text

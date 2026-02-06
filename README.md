@@ -68,16 +68,16 @@ In the Feishu Open Platform console, go to **Events & Callbacks**:
 3. Ensure the event permissions are approved
 
 ```bash
-openclaw config set channels.feishu.appId "cli_xxxxx"
-openclaw config set channels.feishu.appSecret "your_app_secret"
-openclaw config set channels.feishu.enabled true
+openclaw config set channels["feishu-unofficial"].appId "cli_xxxxx"
+openclaw config set channels["feishu-unofficial"].appSecret "your_app_secret"
+openclaw config set channels["feishu-unofficial"].enabled true
 ```
 
 ### Configuration Options
 
 ```yaml
 channels:
-  feishu:
+  "feishu-unofficial":
     enabled: true
     appId: "cli_xxxxx"
     appSecret: "secret"
@@ -101,7 +101,7 @@ channels:
 
 ```yaml
 channels:
-  feishu:
+  "feishu-unofficial":
     # Enable/disable the channel
     enabled: true
 
@@ -392,16 +392,16 @@ npm install @mahmut-abi/feishu-unofficial
 3. 确保事件订阅的权限已申请并通过审核
 
 ```bash
-openclaw config set channels.feishu.appId "cli_xxxxx"
-openclaw config set channels.feishu.appSecret "your_app_secret"
-openclaw config set channels.feishu.enabled true
+openclaw config set channels["feishu-unofficial"].appId "cli_xxxxx"
+openclaw config set channels["feishu-unofficial"].appSecret "your_app_secret"
+openclaw config set channels["feishu-unofficial"].enabled true
 ```
 
 ### 配置选项
 
 ```yaml
 channels:
-  feishu:
+  "feishu-unofficial":
     enabled: true
     appId: "cli_xxxxx"
     appSecret: "secret"
@@ -425,7 +425,7 @@ channels:
 
 ```yaml
 channels:
-  feishu:
+  "feishu-unofficial":
     # 启用/禁用频道
     enabled: true
 
