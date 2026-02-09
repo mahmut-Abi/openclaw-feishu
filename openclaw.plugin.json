@@ -1,1 +1,1 @@
-{"id": "feishu-unofficial", "channels": ["feishu"], "configSchema": {"type": "object", "additionalProperties": false, "properties": {}}}
+{"id": "feishu-unofficial", "channels": ["feishu-unofficial"], "configSchema": {"type": "object", "additionalProperties": false, "properties": {}}}
